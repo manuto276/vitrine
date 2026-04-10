@@ -207,6 +207,7 @@ internal class ThemeHost : IDisposable
         RefreshThemeList();
         menu.Items.Add(_themesMenu);
 
+        menu.Items.Add("Reload Theme", null, (_, _) => LoadActiveTheme());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => Shutdown());
 
