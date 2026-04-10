@@ -15,13 +15,8 @@
         "ms-dotnettools.csharp",
         "ms-dotnettools.csdevkit",
         "ms-dotnettools.vscode-dotnet-runtime",
-        "csharpier.csharpier-vscode",
-        "eamodio.gitlens",
-        "mhutchie.git-graph",
         "mikestead.dotenv",
-        "editorconfig.editorconfig",
-        "usernamehw.errorlens",
-        "gruntfuggly.todo-tree"
+        "editorconfig.editorconfig"
       ]
     }
   },
