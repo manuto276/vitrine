@@ -20,7 +20,7 @@ static class Program
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"Errore durante l'avvio di Vitrine:\n\n{ex.Message}",
+                $"Failed to start Vitrine:\n\n{ex.Message}",
                 "Vitrine",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error

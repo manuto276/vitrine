@@ -20,44 +20,46 @@ internal static class DesktopAttacher
     [DllImport("user32.dll")]
     private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
 
-    [DllImport("user32.dll")]
-    internal static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
-
-    internal static IntPtr GetWorkerW()
+    /// <summary>
+    /// Returns the window handle to embed widgets behind desktop icons.
+    /// After sending 0x052C, SHELLDLL_DefView (icons) moves to a WorkerW,
+    /// and Progman becomes the background layer — that's where we draw.
+    /// </summary>
+    internal static IntPtr GetDesktopHandle()
     {
         IntPtr progman = FindWindow("Progman", null);
         if (progman == IntPtr.Zero)
             return IntPtr.Zero;
 
-        // Spawn a WorkerW behind the desktop icons.
-        // Try both common parameter combinations for compatibility.
+        // Tell Progman to spawn a WorkerW and move SHELLDLL_DefView into it.
         SendMessageTimeout(progman, 0x052C, new IntPtr(0xD), new IntPtr(0x1),
             0x0, 2000, out _);
-        SendMessageTimeout(progman, 0x052C, IntPtr.Zero, IntPtr.Zero,
-            0x0, 2000, out _);
 
-        // Give Explorer time to create the WorkerW
         Thread.Sleep(100);
 
-        IntPtr workerW = IntPtr.Zero;
-
+        // Verify the split happened: SHELLDLL_DefView should now be in a WorkerW,
+        // not directly under Progman.
+        bool splitSucceeded = false;
         EnumWindows((hwnd, _) =>
         {
             IntPtr shell = FindWindowEx(hwnd, IntPtr.Zero, "SHELLDLL_DefView", null);
-            if (shell != IntPtr.Zero)
-                workerW = FindWindowEx(IntPtr.Zero, hwnd, "WorkerW", null);
+            if (shell != IntPtr.Zero && hwnd != progman)
+            {
+                splitSucceeded = true;
+                return false; // stop enumerating
+            }
             return true;
         }, IntPtr.Zero);
 
-        // Fallback: if no WorkerW was found, check if SHELLDLL_DefView
-        // is directly under Progman (some Windows configurations)
-        if (workerW == IntPtr.Zero)
+        if (!splitSucceeded)
         {
-            IntPtr shell = FindWindowEx(progman, IntPtr.Zero, "SHELLDLL_DefView", null);
-            if (shell != IntPtr.Zero)
-                workerW = progman;
+            // Retry with alternative parameters
+            SendMessageTimeout(progman, 0x052C, IntPtr.Zero, IntPtr.Zero,
+                0x0, 2000, out _);
+            Thread.Sleep(100);
         }
 
-        return workerW;
+        // Progman is now the background layer behind desktop icons
+        return progman;
     }
 }

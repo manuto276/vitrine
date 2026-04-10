@@ -1,36 +1,74 @@
 using System;
-using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Threading;
+using System.Windows.Forms;
 using Vitrine.Engine.Widgets;
 
 namespace Vitrine.Engine.Core;
 
 internal class WidgetHost
 {
-    private IntPtr _workerW;
+    private IntPtr _desktopHandle;
+    private NotifyIcon? _trayIcon;
 
     internal void Start()
     {
-        _workerW = GetWorkerWWithRetry(maxAttempts: 3, delayMs: 500);
+        _desktopHandle = GetDesktopHandleWithRetry(maxAttempts: 3, delayMs: 500);
 
-        if (_workerW == IntPtr.Zero)
+        if (_desktopHandle == IntPtr.Zero)
             throw new InvalidOperationException(
-                "Impossibile ottenere il WorkerW handle.\n\n"
-                + "Verifica che:\n"
-                + "  • explorer.exe sia in esecuzione\n"
-                + "  • il desktop di Windows sia visibile\n"
-                + "  • non sia attivo un wallpaper engine di terze parti"
+                "Failed to obtain the desktop handle.\n\n"
+                + "Please verify that:\n"
+                + "  • explorer.exe is running\n"
+                + "  • the Windows desktop is visible\n"
+                + "  • no third-party wallpaper engine is active"
             );
 
+        SetupTrayIcon();
         LoadWidget("welcome", x: 40, y: 40, width: 320, height: 130);
     }
 
-    private static IntPtr GetWorkerWWithRetry(int maxAttempts, int delayMs)
+    private void SetupTrayIcon()
+    {
+        var menu = new ContextMenuStrip();
+        menu.Items.Add("Exit", null, (_, _) => Shutdown());
+
+        _trayIcon = new NotifyIcon
+        {
+            Icon = LoadIcon(),
+            Text = "Vitrine",
+            Visible = true,
+            ContextMenuStrip = menu,
+        };
+    }
+
+    private static Icon LoadIcon()
+    {
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "vitrine.ico");
+        if (File.Exists(iconPath))
+            return new Icon(iconPath);
+
+        return SystemIcons.Application;
+    }
+
+    private void Shutdown()
+    {
+        if (_trayIcon != null)
+        {
+            _trayIcon.Visible = false;
+            _trayIcon.Dispose();
+            _trayIcon = null;
+        }
+
+        Application.Exit();
+    }
+
+    private static IntPtr GetDesktopHandleWithRetry(int maxAttempts, int delayMs)
     {
         for (int i = 0; i < maxAttempts; i++)
         {
-            IntPtr handle = DesktopAttacher.GetWorkerW();
+            IntPtr handle = DesktopAttacher.GetDesktopHandle();
             if (handle != IntPtr.Zero)
                 return handle;
 
@@ -48,9 +86,9 @@ internal class WidgetHost
         );
 
         if (!File.Exists(htmlPath))
-            throw new FileNotFoundException($"Widget '{name}' non trovato: {htmlPath}");
+            throw new FileNotFoundException($"Widget '{name}' not found: {htmlPath}");
 
-        var widget = new WidgetWindow(htmlPath)
+        var widget = new WidgetWindow(htmlPath, _desktopHandle)
         {
             Left = x,
             Top = y,
@@ -59,6 +97,5 @@ internal class WidgetHost
         };
 
         widget.Show();
-        DesktopAttacher.SetParent(widget.Handle, _workerW);
     }
 }
