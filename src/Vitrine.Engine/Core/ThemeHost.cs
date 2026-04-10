@@ -4,7 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using Microsoft.Web.WebView2.Core;
 using Vitrine.Engine.SystemInfo;
 using Vitrine.Engine.Themes;
 
@@ -20,7 +22,13 @@ internal class ThemeHost : IDisposable
 
     internal void Start()
     {
-        Log.Info("ThemeHost.Start — acquiring desktop handle");
+        Log.Info("ThemeHost.Start — begin parallel init");
+
+        // 1. Fire WebView2 environment creation immediately (runs on thread pool)
+        var envTask = CoreWebView2Environment.CreateAsync();
+        Log.Info("WebView2 environment creation started (background)");
+
+        // 2. Acquire desktop handle (blocks, but WebView2 env runs in parallel)
         var desktopHandle = GetDesktopHandleWithRetry(maxAttempts: 3, delayMs: 500);
 
         if (desktopHandle == IntPtr.Zero)
@@ -34,22 +42,35 @@ internal class ThemeHost : IDisposable
 
         Log.Info($"Desktop handle acquired: 0x{desktopHandle:X}");
 
+        // 3. Config + first run (fast)
         _config = Configuration.Load();
         Log.Info($"Config loaded — ActiveTheme={_config.ActiveTheme}");
-
         EnsureFirstRun();
 
+        // 4. Pre-read theme JS in background while we set up the window
+        var themeJsTask = Task.Run(PreReadActiveThemeJs);
+
+        // 5. Create and show window
         _window = new ThemeWindow(desktopHandle);
         _window.MessageReceived += OnThemeMessage;
         _window.Show();
         Log.Info($"ThemeWindow shown — Handle=0x{_window.Handle:X}");
 
+        // 6. Async: await env + theme JS, then init WebView2 and load theme
         _window.Invoke(async () =>
         {
             try
             {
-                await _window.InitAsync();
-                LoadActiveTheme();
+                var env = await envTask;
+                Log.Info("WebView2 environment ready");
+
+                await _window.InitAsync(env);
+
+                var themeJs = await themeJsTask;
+                if (themeJs != null)
+                    _window.LoadThemeContent(themeJs);
+                else
+                    LoadActiveTheme(); // fallback: read from disk
             }
             catch (Exception ex)
             {
@@ -62,13 +83,37 @@ internal class ThemeHost : IDisposable
         Log.Info("ThemeHost started successfully");
     }
 
+    private string? PreReadActiveThemeJs()
+    {
+        try
+        {
+            var themePath = Path.Combine(Configuration.ThemesPath, _config.ActiveTheme);
+            var manifestPath = Path.Combine(themePath, "theme.json");
+            if (!File.Exists(manifestPath)) return null;
+
+            var manifest = JsonSerializer.Deserialize<ThemeManifest>(File.ReadAllText(manifestPath));
+            if (manifest == null) return null;
+
+            var entryPath = Path.Combine(themePath, manifest.Entry);
+            if (!File.Exists(entryPath)) return null;
+
+            var content = File.ReadAllText(entryPath);
+            Log.Info($"Theme JS pre-read — {content.Length} chars");
+            return content;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Pre-read failed, will load on main thread: {ex.Message}");
+            return null;
+        }
+    }
+
     private void EnsureFirstRun()
     {
         var bundledPath = Path.Combine(AppContext.BaseDirectory, "Assets", "themes", "default");
         var targetPath = Path.Combine(Configuration.ThemesPath, "default");
         var targetManifest = Path.Combine(targetPath, "theme.json");
 
-        // Re-copy if the default theme is missing or incomplete
         if (!File.Exists(targetManifest) || !ThemeIsComplete(targetPath))
         {
             Log.Info("Installing/repairing default theme");
@@ -150,6 +195,7 @@ internal class ThemeHost : IDisposable
     private void SetupTrayIcon()
     {
         var menu = new ContextMenuStrip();
+        menu.Opening += (_, _) => RefreshThemeList();
 
         _themesMenu = new ToolStripMenuItem("Themes");
         RefreshThemeList();

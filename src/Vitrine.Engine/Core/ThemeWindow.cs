@@ -45,14 +45,11 @@ internal class ThemeWindow : Form
         }
     }
 
-    internal async Task InitAsync()
+    internal async Task InitAsync(CoreWebView2Environment env)
     {
         if (_initialized) return;
 
-        Log.Info("Initializing WebView2 environment");
-        var env = await CoreWebView2Environment.CreateAsync();
-        Log.Info($"WebView2 environment created — BrowserVersion={env.BrowserVersionString}");
-
+        Log.Info($"Attaching WebView2 — BrowserVersion={env.BrowserVersionString}");
         await _webView.EnsureCoreWebView2Async(env);
         Log.Info("CoreWebView2 initialized");
 
@@ -80,12 +77,6 @@ internal class ThemeWindow : Form
 
     internal void LoadTheme(string themePath, string entry)
     {
-        if (!_initialized)
-        {
-            Log.Warn("LoadTheme called but WebView2 not initialized yet");
-            return;
-        }
-
         var themeJsPath = Path.Combine(themePath, entry);
         Log.Info($"Loading theme — reading {themeJsPath}");
 
@@ -95,14 +86,21 @@ internal class ThemeWindow : Form
             return;
         }
 
-        var themeJs = File.ReadAllText(themeJsPath);
-        Log.Info($"Theme JS loaded — {themeJs.Length} chars");
+        LoadThemeContent(File.ReadAllText(themeJsPath));
+    }
 
-        // Inline the theme JS to avoid CORS issues with NavigateToString + virtual hosts
+    internal void LoadThemeContent(string themeJs)
+    {
+        if (!_initialized)
+        {
+            Log.Warn("LoadThemeContent called but WebView2 not initialized yet");
+            return;
+        }
+
+        Log.Info($"Loading theme content — {themeJs.Length} chars");
         _webView.CoreWebView2.NavigateToString(
             ShellHtmlPrefix + themeJs + ShellHtmlSuffix);
-
-        Log.Info("NavigateToString called with inline theme JS");
+        Log.Info("NavigateToString called");
     }
 
     internal void PostMessage(string json)

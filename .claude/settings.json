@@ -27,7 +27,8 @@
       "Bash(sudo chown:*)",
       "Bash(dotnet restore:*)",
       "Bash(dotnet publish:*)",
-      "Bash(dotnet clean:*)"
+      "Bash(dotnet clean:*)",
+      "Bash(bash)"
     ],
     "defaultMode": "acceptEdits"
   }

@@ -8,75 +8,72 @@ Vitrine renders a full-screen transparent overlay behind your desktop icons usin
 
 - Full-screen transparent overlay embedded behind desktop icons
 - Themes are compiled React (JSX) bundles — full control over layout and style
-- System info API (`window.vitrine.system`) exposes CPU, RAM, storage, top processes
+- System info API (`window.vitrine.system`) exposes CPU, RAM, battery, storage, top processes
 - Theme switching from the system tray
 - Configuration stored in `%APPDATA%\Vitrine\`
 - Debug build with file logging for theme development
 
-## Getting Started
-
-### Prerequisites
+## Prerequisites
 
 - Windows 10/11
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 - [Node.js 20+](https://nodejs.org/) (for building themes)
 - [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (usually pre-installed on Windows 10/11)
+- GNU Make
 
-### Build
+## Makefile
+
+| Command | Description |
+|---|---|
+| `make build` | Build themes and .NET project (Release) |
+| `make release` | Publish self-contained executable to `publish/release/` |
+| `make debug` | Publish with logging enabled to `publish/debug/` |
+| `make build-themes` | Compile all React themes in `src/themes/` |
+| `make restore` | Restore NuGet packages |
+| `make clean` | Clean all build artifacts and publish output |
+
+### Quick start
 
 ```bash
-# Build themes + .NET project
-make build
-
-# Publish self-contained release
 make release
-
-# Publish debug build (with file logging)
-make debug
+./publish/release/Vitrine.exe
 ```
 
-The output goes to `publish/release/` or `publish/debug/`.
-
-### Run
-
-Launch `Vitrine.exe` from the publish folder. A system tray icon appears — right-click it to switch themes or exit.
+A system tray icon appears — right-click to switch themes or exit.
 
 ## Project Structure
 
 ```
 ├── src/
-│   ├── Vitrine.Engine/          # .NET WinForms + WebView2 host
+│   ├── Vitrine.Engine/             # .NET WinForms + WebView2 host
 │   │   ├── Core/
-│   │   │   ├── DesktopAttacher  # Win32 Progman/WorkerW embedding
-│   │   │   ├── ThemeHost        # Lifecycle, tray, config, system info bridge
-│   │   │   ├── ThemeWindow      # Full-screen WebView2 Form
-│   │   │   ├── Configuration    # APPDATA config.json management
-│   │   │   └── Log              # Debug-only file logger
+│   │   │   ├── DesktopAttacher     # Win32 Progman/WorkerW embedding
+│   │   │   ├── ThemeHost           # Lifecycle, tray, config, system info bridge
+│   │   │   ├── ThemeWindow         # Full-screen WebView2 Form
+│   │   │   ├── Configuration       # %APPDATA% config.json management
+│   │   │   └── Log                 # Debug-only file logger
 │   │   ├── SystemInfo/
-│   │   │   └── SystemInfoProvider  # CPU, RAM, drives, processes via P/Invoke
+│   │   │   └── SystemInfoProvider  # CPU, RAM, battery, drives, processes (P/Invoke)
 │   │   └── Themes/
-│   │       └── ThemeManifest    # theme.json model
+│   │       └── ThemeManifest       # theme.json model
 │   └── themes/
-│       └── default/             # Default Conky-style React theme
-│           ├── src/
-│           │   ├── App.jsx      # Main UI (system info panels, bars)
-│           │   ├── index.jsx    # React entry point
-│           │   └── useSystemInfo.js  # Hook for vitrine.system API
-│           ├── vite.config.js   # Builds to single IIFE bundle
+│       └── default/                # Default Conky-style React theme
+│           ├── src/                # React source (App.jsx, useSystemInfo.js)
+│           ├── vite.config.js      # Builds to single IIFE bundle
 │           └── package.json
 ├── Vitrine.sln
 ├── Makefile
-└── Directory.Build.props        # Redirects bin/obj to .build/
+└── Directory.Build.props           # Redirects bin/obj to .build/
 ```
 
 ## Creating a Theme
 
-A theme is a React project that compiles to a single IIFE JavaScript bundle.
+A theme is a React project that compiles to a single IIFE JavaScript bundle. Use `src/themes/default/` as a reference.
 
 ### 1. Scaffold
 
 ```bash
-mkdir my-theme && cd my-theme
+mkdir src/themes/my-theme && cd src/themes/my-theme
 npm init -y
 npm install react react-dom
 npm install -D vite @vitejs/plugin-react
@@ -134,23 +131,36 @@ function App() {
 createRoot(document.getElementById('root')).render(<App />);
 ```
 
-### 4. Build and install
+### 4. Add the manifest
 
-```bash
-npm run build
+Create `theme.json` in the theme root:
+
+```json
+{ "name": "My Theme", "description": "A custom Vitrine theme", "entry": "theme.js" }
 ```
 
-Copy the output to your themes folder:
+### 5. Build and install
+
+Themes placed in `src/themes/` are compiled automatically:
+
+```bash
+make build-themes
+make release
+```
+
+The theme is bundled with the executable. On first run it's copied to `%APPDATA%\Vitrine\themes\`.
+
+To install a theme manually, copy the compiled bundle to the config folder:
 
 ```
 %APPDATA%\Vitrine\themes\my-theme\
-├── theme.json    # { "name": "My Theme", "entry": "theme.js" }
-└── theme.js      # compiled bundle
+├── theme.json
+└── theme.js
 ```
 
-Right-click the tray icon → **Themes** → select your theme.
+Right-click the tray icon, open **Themes**, and select it.
 
-### System Info API
+## System Info API
 
 The `window.vitrine.system` API is injected into every theme:
 
@@ -181,6 +191,13 @@ The `info` object:
     "used": 8589934592,
     "load": 50
   },
+  "battery": {
+    "hasBattery": true,
+    "charging": false,
+    "level": 72,
+    "remainingSeconds": 5400,
+    "powerSource": "battery"
+  },
   "drives": [
     { "name": "C:\\", "label": "OS", "total": 500107862016, "free": 250053931008, "used": 250053931008 }
   ],
@@ -190,19 +207,26 @@ The `info` object:
 }
 ```
 
+> On desktops without a battery, `battery` returns `{ "hasBattery": false }`.
+
 ## Configuration
 
 Stored in `%APPDATA%\Vitrine\`:
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
 | `config.json` | Active theme selection |
 | `themes/` | Installed themes |
 | `logs/` | Debug build logs (daily rotation) |
 
-## Debug
+## Debugging
 
-Build with `make debug` to enable file logging to `%APPDATA%\Vitrine\logs\vitrine-YYYY-MM-DD.log`. Logs include the full startup sequence, WebView2 initialization, theme loading, and any JavaScript errors from the theme.
+```bash
+make debug
+./publish/debug/Vitrine.exe
+```
+
+Logs are written to `%APPDATA%\Vitrine\logs\vitrine-YYYY-MM-DD.log` and include the full startup sequence, WebView2 initialization, theme loading, and any JavaScript errors from the theme.
 
 ## License
 

@@ -32,30 +32,47 @@ internal static class DesktopAttacher
             0x0, 2000, out _);
         Log.Info("Sent 0x052C to Progman");
 
-        Thread.Sleep(100);
+        // Tight poll: check every 10ms for up to 200ms instead of sleeping 100ms
+        if (PollForSplit(progman, maxAttempts: 20, intervalMs: 10))
+        {
+            Log.Info("SHELLDLL_DefView split detected");
+        }
+        else
+        {
+            Log.Warn("Split not detected, retrying with alt params");
+            SendMessageTimeout(progman, 0x052C, IntPtr.Zero, IntPtr.Zero,
+                0x0, 2000, out _);
+            PollForSplit(progman, maxAttempts: 10, intervalMs: 10);
+        }
 
-        bool splitSucceeded = false;
+        Log.Info($"Returning Progman handle 0x{progman:X}");
+        return progman;
+    }
+
+    private static bool PollForSplit(IntPtr progman, int maxAttempts, int intervalMs)
+    {
+        for (int i = 0; i < maxAttempts; i++)
+        {
+            Thread.Sleep(intervalMs);
+            if (IsSplitDone(progman))
+                return true;
+        }
+        return false;
+    }
+
+    private static bool IsSplitDone(IntPtr progman)
+    {
+        bool found = false;
         EnumWindows((hwnd, _) =>
         {
             IntPtr shell = FindWindowEx(hwnd, IntPtr.Zero, "SHELLDLL_DefView", null);
             if (shell != IntPtr.Zero && hwnd != progman)
             {
-                Log.Info($"SHELLDLL_DefView found in WorkerW 0x{hwnd:X}");
-                splitSucceeded = true;
+                found = true;
                 return false;
             }
             return true;
         }, IntPtr.Zero);
-
-        if (!splitSucceeded)
-        {
-            Log.Warn("Split not detected, retrying with alt params");
-            SendMessageTimeout(progman, 0x052C, IntPtr.Zero, IntPtr.Zero,
-                0x0, 2000, out _);
-            Thread.Sleep(100);
-        }
-
-        Log.Info($"Returning Progman handle 0x{progman:X}");
-        return progman;
+        return found;
     }
 }
