@@ -1,0 +1,29 @@
+{
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "mounts": [
+    "source=vitrine-nuget-cache,target=/workspace/.nuget/packages,type=volume"
+  ],
+  "remoteUser": "ubuntu",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.csdevkit",
+        "ms-dotnettools.vscode-dotnet-runtime",
+        "csharpier.csharpier-vscode",
+        "eamodio.gitlens",
+        "mhutchie.git-graph",
+        "mikestead.dotenv",
+        "editorconfig.editorconfig",
+        "usernamehw.errorlens",
+        "gruntfuggly.todo-tree"
+      ]
+    }
+  },
+  "postCreateCommand": "dotnet restore || true"
+}

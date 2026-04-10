@@ -1,0 +1,20 @@
+# .NET
+.build/
+*.user
+*.suo
+.vs/
+publish/
+
+# NuGet
+.nuget/
+*.nupkg
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
