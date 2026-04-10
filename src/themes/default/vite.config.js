@@ -15,5 +15,10 @@ export default defineConfig({
       fileName: () => 'theme.js',
     },
     cssCodeSplit: false,
+    rollupOptions: {
+      output: {
+        assetFileNames: 'theme.[ext]',
+      },
+    },
   },
 });

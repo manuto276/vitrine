@@ -29,6 +29,7 @@ build-themes:
 		cd "$$dir" && npm install --silent && npm run build --silent && cd -; \
 		mkdir -p "$(THEMES_DEST)/$$name"; \
 		cp "$$dir/dist/theme.js" "$(THEMES_DEST)/$$name/theme.js"; \
+		cp "$$dir/dist/theme.css" "$(THEMES_DEST)/$$name/theme.css" 2>/dev/null || true; \
 		cp "$$dir/theme.json" "$(THEMES_DEST)/$$name/theme.json" 2>/dev/null || true; \
 	done
 

@@ -86,10 +86,19 @@ internal class ThemeWindow : Form
             return;
         }
 
-        LoadThemeContent(File.ReadAllText(themeJsPath));
+        var themeJs = File.ReadAllText(themeJsPath);
+
+        // Load theme.css if it exists alongside the JS entry
+        var themeCssPath = Path.Combine(themePath, "theme.css");
+        string? themeCss = File.Exists(themeCssPath) ? File.ReadAllText(themeCssPath) : null;
+
+        if (themeCss != null)
+            Log.Info($"Theme CSS found — {themeCss.Length} chars");
+
+        LoadThemeContent(themeJs, themeCss);
     }
 
-    internal void LoadThemeContent(string themeJs)
+    internal void LoadThemeContent(string themeJs, string? themeCss = null)
     {
         if (!_initialized)
         {
@@ -97,9 +106,14 @@ internal class ThemeWindow : Form
             return;
         }
 
-        Log.Info($"Loading theme content — {themeJs.Length} chars");
+        Log.Info($"Loading theme content — JS={themeJs.Length} chars, CSS={themeCss?.Length ?? 0} chars");
+
+        var cssBlock = themeCss != null
+            ? $"<style>{themeCss}</style>"
+            : "";
+
         _webView.CoreWebView2.NavigateToString(
-            ShellHtmlPrefix + themeJs + ShellHtmlSuffix);
+            ShellHtmlPrefix + cssBlock + ShellHtmlMiddle + themeJs + ShellHtmlSuffix);
         Log.Info("NavigateToString called");
     }
 
@@ -136,6 +150,10 @@ internal class ThemeWindow : Form
             body { background: transparent; width: 100vw; height: 100vh; overflow: hidden; }
             #root { width: 100%; height: 100%; }
           </style>
+        """;
+
+    private const string ShellHtmlMiddle = """
+
         </head>
         <body>
           <div id="root"></div>

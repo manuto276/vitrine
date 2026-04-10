@@ -47,8 +47,8 @@ internal class ThemeHost : IDisposable
         Log.Info($"Config loaded — ActiveTheme={_config.ActiveTheme}");
         EnsureFirstRun();
 
-        // 4. Pre-read theme JS in background while we set up the window
-        var themeJsTask = Task.Run(PreReadActiveThemeJs);
+        // 4. Pre-read theme JS + CSS in background while we set up the window
+        var themeTask = Task.Run(PreReadActiveTheme);
 
         // 5. Create and show window
         _window = new ThemeWindow(desktopHandle);
@@ -66,9 +66,9 @@ internal class ThemeHost : IDisposable
 
                 await _window.InitAsync(env);
 
-                var themeJs = await themeJsTask;
-                if (themeJs != null)
-                    _window.LoadThemeContent(themeJs);
+                var theme = await themeTask;
+                if (theme.js != null)
+                    _window.LoadThemeContent(theme.js, theme.css);
                 else
                     LoadActiveTheme(); // fallback: read from disk
             }
@@ -83,28 +83,34 @@ internal class ThemeHost : IDisposable
         Log.Info("ThemeHost started successfully");
     }
 
-    private string? PreReadActiveThemeJs()
+    private (string? js, string? css) PreReadActiveTheme()
     {
         try
         {
             var themePath = Path.Combine(Configuration.ThemesPath, _config.ActiveTheme);
             var manifestPath = Path.Combine(themePath, "theme.json");
-            if (!File.Exists(manifestPath)) return null;
+            if (!File.Exists(manifestPath)) return (null, null);
 
             var manifest = JsonSerializer.Deserialize<ThemeManifest>(File.ReadAllText(manifestPath));
-            if (manifest == null) return null;
+            if (manifest == null) return (null, null);
 
             var entryPath = Path.Combine(themePath, manifest.Entry);
-            if (!File.Exists(entryPath)) return null;
+            if (!File.Exists(entryPath)) return (null, null);
 
-            var content = File.ReadAllText(entryPath);
-            Log.Info($"Theme JS pre-read — {content.Length} chars");
-            return content;
+            var js = File.ReadAllText(entryPath);
+            Log.Info($"Theme JS pre-read — {js.Length} chars");
+
+            var cssPath = Path.Combine(themePath, "theme.css");
+            string? css = File.Exists(cssPath) ? File.ReadAllText(cssPath) : null;
+            if (css != null)
+                Log.Info($"Theme CSS pre-read — {css.Length} chars");
+
+            return (js, css);
         }
         catch (Exception ex)
         {
             Log.Warn($"Pre-read failed, will load on main thread: {ex.Message}");
-            return null;
+            return (null, null);
         }
     }
 

@@ -24,13 +24,10 @@ function pct(used, total) {
 
 function Bar({ value, color = '#8be9fd' }) {
   return (
-    <div style={styles.barOuter}>
+    <div className="vitrine-bar">
       <div
-        style={{
-          ...styles.barInner,
-          width: `${Math.min(value, 100)}%`,
-          background: color,
-        }}
+        className="vitrine-bar-fill"
+        style={{ width: `${Math.min(value, 100)}%`, background: color }}
       />
     </div>
   );
@@ -40,11 +37,22 @@ function Bar({ value, color = '#8be9fd' }) {
 
 function Section({ title, children }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={styles.sectionTitle}>
-        {title} <span style={styles.rule} />
+    <div className="vitrine-section">
+      <div className="vitrine-section-title">
+        {title} <span className="vitrine-section-rule" />
       </div>
       {children}
+    </div>
+  );
+}
+
+/* ── row helper ──────────────────────────────────────────────────── */
+
+function Row({ label, value }) {
+  return (
+    <div className="vitrine-row">
+      <span className="vitrine-dim">{label}</span>
+      <span>{value}</span>
     </div>
   );
 }
@@ -56,9 +64,9 @@ export default function App() {
 
   if (!info) {
     return (
-      <div style={styles.container}>
-        <div style={styles.panel}>
-          <span style={styles.dim}>Waiting for system data…</span>
+      <div className="vitrine-container">
+        <div className="vitrine-panel">
+          <span className="vitrine-dim">Waiting for system data…</span>
         </div>
       </div>
     );
@@ -68,8 +76,8 @@ export default function App() {
   const memPct = pct(memory.used, memory.total);
 
   return (
-    <div style={styles.container}>
-      <div style={styles.panel}>
+    <div className="vitrine-container">
+      <div className="vitrine-panel">
         {/* SYSTEM */}
         <Section title="SYSTEM">
           <Row label="Hostname" value={system.hostname} />
@@ -98,7 +106,7 @@ export default function App() {
           {drives.map((d, i) => {
             const usedPct = pct(d.used, d.total);
             return (
-              <div key={i} style={{ marginBottom: 6 }}>
+              <div key={i} className="vitrine-mb-6">
                 <Row
                   label={d.name}
                   value={`${formatBytes(d.used)} / ${formatBytes(d.total)}`}
@@ -111,16 +119,16 @@ export default function App() {
 
         {/* PROCESSES */}
         <Section title="PROCESSES">
-          <div style={styles.procHeader}>
-            <span style={{ flex: 2 }}>Name</span>
-            <span style={{ flex: 1, textAlign: 'right' }}>PID</span>
-            <span style={{ flex: 1, textAlign: 'right' }}>Mem</span>
+          <div className="vitrine-proc-header">
+            <span className="vitrine-col-name">Name</span>
+            <span className="vitrine-col-right">PID</span>
+            <span className="vitrine-col-right">Mem</span>
           </div>
           {processes.map((p, i) => (
-            <div key={i} style={styles.procRow}>
-              <span style={{ flex: 2 }}>{p.name}</span>
-              <span style={{ flex: 1, textAlign: 'right', ...styles.dim }}>{p.pid}</span>
-              <span style={{ flex: 1, textAlign: 'right' }}>{formatBytes(p.memory)}</span>
+            <div key={i} className="vitrine-proc-row">
+              <span className="vitrine-col-name">{p.name}</span>
+              <span className="vitrine-col-right vitrine-dim">{p.pid}</span>
+              <span className="vitrine-col-right">{formatBytes(p.memory)}</span>
             </div>
           ))}
         </Section>
@@ -128,90 +136,3 @@ export default function App() {
     </div>
   );
 }
-
-/* ── row helper ──────────────────────────────────────────────────── */
-
-function Row({ label, value }) {
-  return (
-    <div style={styles.row}>
-      <span style={styles.dim}>{label}</span>
-      <span>{value}</span>
-    </div>
-  );
-}
-
-/* ── styles (Conky-inspired) ─────────────────────────────────────── */
-
-const styles = {
-  container: {
-    position: 'fixed',
-    top: 24,
-    right: 24,
-    bottom: 24,
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
-    pointerEvents: 'none',
-    fontFamily: "'Cascadia Code', 'Consolas', 'Courier New', monospace",
-    fontSize: 12,
-    color: '#f8f8f2',
-    userSelect: 'none',
-  },
-  panel: {
-    background: 'rgba(40, 42, 54, 0.78)',
-    backdropFilter: 'blur(8px)',
-    WebkitBackdropFilter: 'blur(8px)',
-    border: '1px solid rgba(255,255,255,0.06)',
-    borderRadius: 10,
-    padding: '18px 22px',
-    minWidth: 280,
-    maxWidth: 320,
-  },
-  sectionTitle: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    fontSize: 11,
-    fontWeight: 700,
-    letterSpacing: '0.12em',
-    color: '#bd93f9',
-    marginBottom: 6,
-  },
-  rule: {
-    flex: 1,
-    height: 1,
-    background: 'rgba(189,147,249,0.25)',
-  },
-  row: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    lineHeight: '20px',
-  },
-  dim: {
-    opacity: 0.5,
-  },
-  barOuter: {
-    height: 4,
-    borderRadius: 2,
-    background: 'rgba(255,255,255,0.08)',
-    margin: '3px 0 4px',
-    overflow: 'hidden',
-  },
-  barInner: {
-    height: '100%',
-    borderRadius: 2,
-    transition: 'width 0.4s ease',
-  },
-  procHeader: {
-    display: 'flex',
-    fontSize: 10,
-    opacity: 0.4,
-    marginBottom: 2,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-  },
-  procRow: {
-    display: 'flex',
-    lineHeight: '18px',
-  },
-};
