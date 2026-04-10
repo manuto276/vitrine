@@ -1,47 +1,33 @@
 using System;
 using System.Drawing;
-using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
-namespace Vitrine.Engine.Widgets;
+namespace Vitrine.Engine.Core;
 
-internal class WidgetInstance : Form
+internal class ThemeWindow : Form
 {
     private readonly WebView2 _webView;
-    private readonly WidgetManifest _manifest;
-    private readonly string _widgetPath;
     private readonly IntPtr _desktopHandle;
-    private readonly string _userDataFolder;
-    private bool _ready;
+    private bool _initialized;
 
-    internal WidgetInstance(
-        WidgetManifest manifest,
-        string widgetPath,
-        IntPtr desktopHandle,
-        string userDataFolder)
+    internal event EventHandler<string>? MessageReceived;
+
+    internal ThemeWindow(IntPtr desktopHandle)
     {
-        _manifest = manifest;
-        _widgetPath = widgetPath;
         _desktopHandle = desktopHandle;
-        _userDataFolder = userDataFolder;
 
-        Text = manifest.Name;
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         BackColor = Color.Black;
         TransparencyKey = Color.Black;
-        Left = manifest.X;
-        Top = manifest.Y;
-        Width = manifest.Width;
-        Height = manifest.Height;
+        Bounds = Screen.PrimaryScreen!.Bounds;
 
         _webView = new WebView2 { Dock = DockStyle.Fill };
         Controls.Add(_webView);
-
-        Load += async (_, _) => await InitAsync();
     }
 
     protected override CreateParams CreateParams
@@ -57,9 +43,11 @@ internal class WidgetInstance : Form
         }
     }
 
-    private async Task InitAsync()
+    internal async Task InitAsync()
     {
-        var env = await CoreWebView2Environment.CreateAsync(null, _userDataFolder);
+        if (_initialized) return;
+
+        var env = await CoreWebView2Environment.CreateAsync();
         await _webView.EnsureCoreWebView2Async(env);
 
         _webView.DefaultBackgroundColor = Color.Transparent;
@@ -70,36 +58,48 @@ internal class WidgetInstance : Form
         _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
 
         await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(BridgeScript);
+        _webView.CoreWebView2.WebMessageReceived += (_, e) => MessageReceived?.Invoke(this, e.WebMessageAsJson);
 
-        _webView.CoreWebView2.WebMessageReceived += OnMessageReceived;
-
-        var entryPath = Path.Combine(_widgetPath, _manifest.Entry);
-        _webView.CoreWebView2.Navigate(new Uri(entryPath).AbsoluteUri);
-
-        _ready = true;
+        _initialized = true;
     }
 
-    private void OnMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    internal void LoadTheme(string themePath, string entry)
     {
-        MessageReceived?.Invoke(this, e.WebMessageAsJson);
+        if (!_initialized) return;
+
+        _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+            "vitrine.theme", themePath, CoreWebView2HostResourceAccessKind.Allow);
+
+        _webView.CoreWebView2.NavigateToString($$"""
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { background: transparent; width: 100vw; height: 100vh; overflow: hidden; }
+                #root { width: 100%; height: 100%; }
+              </style>
+            </head>
+            <body>
+              <div id="root"></div>
+              <script src="https://vitrine.theme/{{entry}}"></script>
+            </body>
+            </html>
+            """);
     }
 
-    internal void PostSystemInfo(string json, int? requestId = null)
+    internal void PostMessage(string json)
     {
-        if (!_ready || _webView.CoreWebView2 == null) return;
+        if (!_initialized) return;
 
         try
         {
-            string message = requestId.HasValue
-                ? $$"""{"type":"systemInfo","id":{{requestId.Value}},"data":{{json}}}"""
-                : $$"""{"type":"systemInfo","data":{{json}}}""";
-
-            _webView.CoreWebView2.PostWebMessageAsJson(message);
+            _webView.CoreWebView2.PostWebMessageAsJson(json);
         }
         catch (ObjectDisposedException) { }
     }
-
-    internal event EventHandler<string>? MessageReceived;
 
     private const string BridgeScript = """
         (function() {
@@ -123,10 +123,9 @@ internal class WidgetInstance : Form
             window.chrome.webview.addEventListener('message', e => {
                 const msg = e.data;
                 if (msg.type === 'systemInfo') {
-                    const data = msg.data;
-                    _callbacks.forEach(fn => fn(data));
+                    _callbacks.forEach(fn => fn(msg.data));
                     if (msg.id && _pending[msg.id]) {
-                        _pending[msg.id](data);
+                        _pending[msg.id](msg.data);
                         delete _pending[msg.id];
                     }
                 }

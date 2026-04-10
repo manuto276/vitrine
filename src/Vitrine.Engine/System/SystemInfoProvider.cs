@@ -1,9 +1,9 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Threading;
 
 namespace Vitrine.Engine.SystemInfo;
 
@@ -16,7 +16,6 @@ internal class SystemInfoProvider : IDisposable
 
     internal void Start(int intervalMs = 2000)
     {
-        // Take initial sample for CPU delta calculation
         GetSystemTimes(out var idle, out var kernel, out var user);
         _prevIdleTime = FileTimeToLong(idle);
         _prevKernelTime = FileTimeToLong(kernel);
@@ -29,13 +28,25 @@ internal class SystemInfoProvider : IDisposable
     {
         var json = JsonSerializer.Serialize(new
         {
+            system = GetSystemDetails(),
             cpu = GetCpuInfo(),
             memory = GetMemoryInfo(),
-            drives = GetDriveInfo()
+            drives = GetDriveInfo(),
+            processes = GetTopProcesses()
         });
 
         InfoUpdated?.Invoke(json);
         return json;
+    }
+
+    private static object GetSystemDetails()
+    {
+        return new
+        {
+            hostname = Environment.MachineName,
+            os = RuntimeInformation.OSDescription,
+            uptime = Environment.TickCount64 / 1000
+        };
     }
 
     private object GetCpuInfo()
@@ -59,7 +70,7 @@ internal class SystemInfoProvider : IDisposable
         _prevKernelTime = kernelTime;
         _prevUserTime = userTime;
 
-        return new { usage };
+        return new { usage, cores = Environment.ProcessorCount };
     }
 
     private static object GetMemoryInfo()
@@ -71,7 +82,8 @@ internal class SystemInfoProvider : IDisposable
         {
             total = status.ullTotalPhys,
             available = status.ullAvailPhys,
-            used = status.ullTotalPhys - status.ullAvailPhys
+            used = status.ullTotalPhys - status.ullAvailPhys,
+            load = status.dwMemoryLoad
         };
     }
 
@@ -84,9 +96,29 @@ internal class SystemInfoProvider : IDisposable
                 name = d.Name,
                 label = d.VolumeLabel,
                 total = d.TotalSize,
-                free = d.AvailableFreeSpace
+                free = d.AvailableFreeSpace,
+                used = d.TotalSize - d.AvailableFreeSpace
             })
             .ToArray<object>();
+    }
+
+    private static object[] GetTopProcesses(int count = 5)
+    {
+        try
+        {
+            return Process.GetProcesses()
+                .Select(p =>
+                {
+                    try { return new { p.ProcessName, p.Id, Mem = p.WorkingSet64 }; }
+                    catch { return null; }
+                })
+                .Where(p => p != null && p.Mem > 0)
+                .OrderByDescending(p => p!.Mem)
+                .Take(count)
+                .Select(p => (object)new { name = p!.ProcessName, pid = p.Id, memory = p.Mem })
+                .ToArray();
+        }
+        catch { return []; }
     }
 
     public void Dispose()
@@ -95,14 +127,10 @@ internal class SystemInfoProvider : IDisposable
         _timer = null;
     }
 
-    #region Native methods
+    #region Native
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct FILETIME
-    {
-        public uint dwLowDateTime;
-        public uint dwHighDateTime;
-    }
+    private struct FILETIME { public uint dwLowDateTime; public uint dwHighDateTime; }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct MEMORYSTATUSEX

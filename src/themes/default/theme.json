@@ -1,0 +1,5 @@
+{
+  "name": "Default",
+  "description": "Classic Conky-style system monitor",
+  "entry": "theme.js"
+}

@@ -13,7 +13,7 @@ static class Program
 
         try
         {
-            using var host = new WidgetHost();
+            using var host = new ThemeHost();
             host.Start();
             Application.Run();
         }
