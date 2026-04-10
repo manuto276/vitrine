@@ -7,11 +7,17 @@ THEMES_DEST := $(PROJECT)/Assets/themes
 build: build-themes
 	dotnet build $(PROJECT) -c Release
 
-publish: build-themes
+debug: build-themes
+	dotnet publish $(PROJECT) -c Debug -r $(RID) \
+		--self-contained true \
+		-p:PublishSingleFile=true \
+		-o $(PUBLISH_DIR)/debug
+
+release: build-themes
 	dotnet publish $(PROJECT) -c Release -r $(RID) \
 		--self-contained true \
 		-p:PublishSingleFile=true \
-		-o $(PUBLISH_DIR)
+		-o $(PUBLISH_DIR)/release
 
 restore:
 	dotnet restore $(PROJECT)
@@ -27,7 +33,8 @@ build-themes:
 	done
 
 clean:
-	dotnet clean $(PROJECT)
+	dotnet clean $(PROJECT) -c Release
+	dotnet clean $(PROJECT) -c Debug
 	rm -rf $(PUBLISH_DIR)
 
-.PHONY: build publish restore clean build-themes
+.PHONY: build debug release restore clean build-themes

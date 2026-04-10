@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -21,6 +20,7 @@ internal class ThemeHost : IDisposable
 
     internal void Start()
     {
+        Log.Info("ThemeHost.Start — acquiring desktop handle");
         var desktopHandle = GetDesktopHandleWithRetry(maxAttempts: 3, delayMs: 500);
 
         if (desktopHandle == IntPtr.Zero)
@@ -32,40 +32,81 @@ internal class ThemeHost : IDisposable
                 + "  • no third-party wallpaper engine is active"
             );
 
+        Log.Info($"Desktop handle acquired: 0x{desktopHandle:X}");
+
         _config = Configuration.Load();
+        Log.Info($"Config loaded — ActiveTheme={_config.ActiveTheme}");
+
         EnsureFirstRun();
 
         _window = new ThemeWindow(desktopHandle);
         _window.MessageReceived += OnThemeMessage;
         _window.Show();
+        Log.Info($"ThemeWindow shown — Handle=0x{_window.Handle:X}");
 
-        // InitAsync must be awaited before loading theme
         _window.Invoke(async () =>
         {
-            await _window.InitAsync();
-            LoadActiveTheme();
+            try
+            {
+                await _window.InitAsync();
+                LoadActiveTheme();
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Failed during WebView2 init or theme load", ex);
+            }
         });
 
         SetupTrayIcon();
         StartSystemInfoBroadcast();
+        Log.Info("ThemeHost started successfully");
     }
 
     private void EnsureFirstRun()
     {
-        var themesPath = Configuration.ThemesPath;
-        if (Directory.Exists(themesPath))
-            return;
-
-        Directory.CreateDirectory(themesPath);
-
         var bundledPath = Path.Combine(AppContext.BaseDirectory, "Assets", "themes", "default");
-        var targetPath = Path.Combine(themesPath, "default");
+        var targetPath = Path.Combine(Configuration.ThemesPath, "default");
+        var targetManifest = Path.Combine(targetPath, "theme.json");
 
-        if (Directory.Exists(bundledPath))
-            CopyDirectory(bundledPath, targetPath);
+        // Re-copy if the default theme is missing or incomplete
+        if (!File.Exists(targetManifest) || !ThemeIsComplete(targetPath))
+        {
+            Log.Info("Installing/repairing default theme");
+            Directory.CreateDirectory(Configuration.ThemesPath);
 
-        _config.ActiveTheme = "default";
-        _config.Save();
+            if (Directory.Exists(bundledPath))
+            {
+                if (Directory.Exists(targetPath))
+                    Directory.Delete(targetPath, true);
+                CopyDirectory(bundledPath, targetPath);
+                Log.Info($"Default theme copied to {targetPath}");
+            }
+            else
+            {
+                Log.Warn($"Bundled theme not found: {bundledPath}");
+            }
+
+            _config.ActiveTheme = "default";
+            _config.Save();
+        }
+        else
+        {
+            Log.Info($"Default theme OK: {targetPath}");
+        }
+    }
+
+    private static bool ThemeIsComplete(string themePath)
+    {
+        var manifestPath = Path.Combine(themePath, "theme.json");
+        if (!File.Exists(manifestPath)) return false;
+
+        try
+        {
+            var manifest = JsonSerializer.Deserialize<ThemeManifest>(File.ReadAllText(manifestPath));
+            if (manifest == null) return false;
+            return File.Exists(Path.Combine(themePath, manifest.Entry));
+        }
+        catch { return false; }
     }
 
     private void LoadActiveTheme()
@@ -73,8 +114,11 @@ internal class ThemeHost : IDisposable
         var themePath = Path.Combine(Configuration.ThemesPath, _config.ActiveTheme);
         var manifestPath = Path.Combine(themePath, "theme.json");
 
+        Log.Info($"Loading theme '{_config.ActiveTheme}' — manifest={manifestPath}");
+
         if (!File.Exists(manifestPath))
         {
+            Log.Error($"Manifest not found: {manifestPath}");
             MessageBox.Show(
                 $"Theme '{_config.ActiveTheme}' not found.\nExpected: {manifestPath}",
                 "Vitrine", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -82,13 +126,21 @@ internal class ThemeHost : IDisposable
         }
 
         var manifest = JsonSerializer.Deserialize<ThemeManifest>(File.ReadAllText(manifestPath));
-        if (manifest == null) return;
+        if (manifest == null)
+        {
+            Log.Error("Failed to deserialize theme manifest");
+            return;
+        }
+
+        var entryPath = Path.Combine(themePath, manifest.Entry);
+        Log.Info($"Theme entry: {entryPath} (exists={File.Exists(entryPath)})");
 
         _window?.LoadTheme(themePath, manifest.Entry);
     }
 
     private void SwitchTheme(string themeName)
     {
+        Log.Info($"Switching theme to '{themeName}'");
         _config.ActiveTheme = themeName;
         _config.Save();
         LoadActiveTheme();
@@ -198,6 +250,7 @@ internal class ThemeHost : IDisposable
 
     private void Shutdown()
     {
+        Log.Info("Shutting down");
         _systemInfo.Dispose();
         _window?.Close();
 
@@ -215,6 +268,7 @@ internal class ThemeHost : IDisposable
     {
         for (int i = 0; i < maxAttempts; i++)
         {
+            Log.Info($"GetDesktopHandle attempt {i + 1}/{maxAttempts}");
             IntPtr handle = DesktopAttacher.GetDesktopHandle();
             if (handle != IntPtr.Zero)
                 return handle;

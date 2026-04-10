@@ -1,6 +1,6 @@
 using System;
 using System.Drawing;
-using System.Text.Json;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
@@ -26,6 +26,8 @@ internal class ThemeWindow : Form
         TransparencyKey = Color.Black;
         Bounds = Screen.PrimaryScreen!.Bounds;
 
+        Log.Info($"ThemeWindow created — Bounds={Bounds}, DesktopHandle=0x{desktopHandle:X}");
+
         _webView = new WebView2 { Dock = DockStyle.Fill };
         Controls.Add(_webView);
     }
@@ -47,8 +49,12 @@ internal class ThemeWindow : Form
     {
         if (_initialized) return;
 
+        Log.Info("Initializing WebView2 environment");
         var env = await CoreWebView2Environment.CreateAsync();
+        Log.Info($"WebView2 environment created — BrowserVersion={env.BrowserVersionString}");
+
         await _webView.EnsureCoreWebView2Async(env);
+        Log.Info("CoreWebView2 initialized");
 
         _webView.DefaultBackgroundColor = Color.Transparent;
 
@@ -58,36 +64,45 @@ internal class ThemeWindow : Form
         _webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
 
         await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(BridgeScript);
-        _webView.CoreWebView2.WebMessageReceived += (_, e) => MessageReceived?.Invoke(this, e.WebMessageAsJson);
+        await _webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(ErrorCaptureScript);
+        Log.Info("Bridge + error capture scripts injected");
+
+        _webView.CoreWebView2.WebMessageReceived += OnWebMessage;
+
+        _webView.CoreWebView2.NavigationCompleted += (_, e) =>
+            Log.Info($"Navigation completed — Success={e.IsSuccess}, HttpStatus={e.HttpStatusCode}");
+
+        _webView.CoreWebView2.ProcessFailed += (_, e) =>
+            Log.Error($"WebView2 process failed — Kind={e.ProcessFailedKind}, Reason={e.Reason}");
 
         _initialized = true;
     }
 
     internal void LoadTheme(string themePath, string entry)
     {
-        if (!_initialized) return;
+        if (!_initialized)
+        {
+            Log.Warn("LoadTheme called but WebView2 not initialized yet");
+            return;
+        }
 
-        _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-            "vitrine.theme", themePath, CoreWebView2HostResourceAccessKind.Allow);
+        var themeJsPath = Path.Combine(themePath, entry);
+        Log.Info($"Loading theme — reading {themeJsPath}");
 
-        _webView.CoreWebView2.NavigateToString($$"""
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-              <meta charset="UTF-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-              <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { background: transparent; width: 100vw; height: 100vh; overflow: hidden; }
-                #root { width: 100%; height: 100%; }
-              </style>
-            </head>
-            <body>
-              <div id="root"></div>
-              <script src="https://vitrine.theme/{{entry}}"></script>
-            </body>
-            </html>
-            """);
+        if (!File.Exists(themeJsPath))
+        {
+            Log.Error($"Theme JS not found: {themeJsPath}");
+            return;
+        }
+
+        var themeJs = File.ReadAllText(themeJsPath);
+        Log.Info($"Theme JS loaded — {themeJs.Length} chars");
+
+        // Inline the theme JS to avoid CORS issues with NavigateToString + virtual hosts
+        _webView.CoreWebView2.NavigateToString(
+            ShellHtmlPrefix + themeJs + ShellHtmlSuffix);
+
+        Log.Info("NavigateToString called with inline theme JS");
     }
 
     internal void PostMessage(string json)
@@ -100,6 +115,41 @@ internal class ThemeWindow : Form
         }
         catch (ObjectDisposedException) { }
     }
+
+    private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        var json = e.WebMessageAsJson;
+
+        // Log JS errors captured by the error script
+        if (json.Contains("\"jsError\""))
+            Log.Error($"JS error from theme: {json}");
+
+        MessageReceived?.Invoke(this, json);
+    }
+
+    private const string ShellHtmlPrefix = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { background: transparent; width: 100vw; height: 100vh; overflow: hidden; }
+            #root { width: 100%; height: 100%; }
+          </style>
+        </head>
+        <body>
+          <div id="root"></div>
+          <script>
+        """;
+
+    private const string ShellHtmlSuffix = """
+
+          </script>
+        </body>
+        </html>
+        """;
 
     private const string BridgeScript = """
         (function() {
@@ -131,5 +181,25 @@ internal class ThemeWindow : Form
                 }
             });
         })();
+        """;
+
+    private const string ErrorCaptureScript = """
+        window.onerror = function(msg, url, line, col, err) {
+            window.chrome.webview.postMessage({
+                type: 'jsError',
+                message: msg,
+                source: url,
+                line: line,
+                col: col,
+                stack: err && err.stack
+            });
+        };
+        window.addEventListener('unhandledrejection', function(e) {
+            window.chrome.webview.postMessage({
+                type: 'jsError',
+                message: 'Unhandled rejection: ' + (e.reason && e.reason.message || String(e.reason)),
+                stack: e.reason && e.reason.stack
+            });
+        });
         """;
 }

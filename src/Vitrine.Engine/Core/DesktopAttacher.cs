@@ -20,46 +20,42 @@ internal static class DesktopAttacher
     [DllImport("user32.dll")]
     private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
 
-    /// <summary>
-    /// Returns the window handle to embed widgets behind desktop icons.
-    /// After sending 0x052C, SHELLDLL_DefView (icons) moves to a WorkerW,
-    /// and Progman becomes the background layer — that's where we draw.
-    /// </summary>
     internal static IntPtr GetDesktopHandle()
     {
         IntPtr progman = FindWindow("Progman", null);
+        Log.Info($"FindWindow('Progman') = 0x{progman:X}");
+
         if (progman == IntPtr.Zero)
             return IntPtr.Zero;
 
-        // Tell Progman to spawn a WorkerW and move SHELLDLL_DefView into it.
         SendMessageTimeout(progman, 0x052C, new IntPtr(0xD), new IntPtr(0x1),
             0x0, 2000, out _);
+        Log.Info("Sent 0x052C to Progman");
 
         Thread.Sleep(100);
 
-        // Verify the split happened: SHELLDLL_DefView should now be in a WorkerW,
-        // not directly under Progman.
         bool splitSucceeded = false;
         EnumWindows((hwnd, _) =>
         {
             IntPtr shell = FindWindowEx(hwnd, IntPtr.Zero, "SHELLDLL_DefView", null);
             if (shell != IntPtr.Zero && hwnd != progman)
             {
+                Log.Info($"SHELLDLL_DefView found in WorkerW 0x{hwnd:X}");
                 splitSucceeded = true;
-                return false; // stop enumerating
+                return false;
             }
             return true;
         }, IntPtr.Zero);
 
         if (!splitSucceeded)
         {
-            // Retry with alternative parameters
+            Log.Warn("Split not detected, retrying with alt params");
             SendMessageTimeout(progman, 0x052C, IntPtr.Zero, IntPtr.Zero,
                 0x0, 2000, out _);
             Thread.Sleep(100);
         }
 
-        // Progman is now the background layer behind desktop icons
+        Log.Info($"Returning Progman handle 0x{progman:X}");
         return progman;
     }
 }

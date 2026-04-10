@@ -18,6 +18,10 @@ RUN curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \
     && /tmp/dotnet-install.sh --channel 9.0 --install-dir /usr/local/dotnet \
     && rm /tmp/dotnet-install.sh
 
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV DOTNET_ROOT=/usr/local/dotnet
 ENV PATH="$PATH:/usr/local/dotnet"
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
