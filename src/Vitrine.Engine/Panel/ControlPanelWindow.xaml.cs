@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Controls;
 using Vitrine.Engine.Core;
 using Vitrine.Engine.Panel.Pages;
 using Wpf.Ui.Controls;
@@ -12,6 +13,7 @@ internal partial class ControlPanelWindow : FluentWindow
     private HomePage? _homePage;
     private ThemesPage? _themesPage;
     private AboutPage? _aboutPage;
+    private bool _loaded;
 
     public ControlPanelWindow(ThemeHost host)
     {
@@ -19,45 +21,18 @@ internal partial class ControlPanelWindow : FluentWindow
         Log.Info("Control Panel opening");
         InitializeComponent();
 
-        SetupNavigation();
-
         Loaded += (_, _) =>
         {
             _loaded = true;
             Log.Info("Control Panel loaded");
-            NavigateTo("home");
+            NavList.SelectedIndex = 0;
         };
     }
 
-    private bool _loaded;
-
-    private void SetupNavigation()
-    {
-        NavView.MenuItems.Add(new NavigationViewItem
-        {
-            Content = "Home",
-            Tag = "home",
-            Icon = new SymbolIcon { Symbol = SymbolRegular.Home24 },
-        });
-        NavView.MenuItems.Add(new NavigationViewItem
-        {
-            Content = "Themes",
-            Tag = "themes",
-            Icon = new SymbolIcon { Symbol = SymbolRegular.Color24 },
-        });
-
-        NavView.FooterMenuItems.Add(new NavigationViewItem
-        {
-            Content = "About",
-            Tag = "about",
-            Icon = new SymbolIcon { Symbol = SymbolRegular.Info24 },
-        });
-    }
-
-    private void OnNavChanged(NavigationView sender, RoutedEventArgs e)
+    private void OnNavChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_loaded) return;
-        if (NavView.SelectedItem is NavigationViewItem item)
+        if (NavList.SelectedItem is Wpf.Ui.Controls.ListViewItem item)
             NavigateTo(item.Tag?.ToString() ?? "home");
     }
 

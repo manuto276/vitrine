@@ -244,7 +244,12 @@ internal class ThemeHost : IDisposable
         app.Resources.MergedDictionaries.Add(new Wpf.Ui.Markup.ThemesDictionary());
         app.Resources.MergedDictionaries.Add(new Wpf.Ui.Markup.ControlsDictionary());
 
-        Wpf.Ui.Appearance.ApplicationThemeManager.Apply(Wpf.Ui.Appearance.ApplicationTheme.Light);
+        // Follow system theme (light/dark)
+        var systemTheme = Wpf.Ui.Appearance.ApplicationThemeManager.GetSystemTheme();
+        var appTheme = systemTheme == Wpf.Ui.Appearance.SystemTheme.Dark
+            ? Wpf.Ui.Appearance.ApplicationTheme.Dark
+            : Wpf.Ui.Appearance.ApplicationTheme.Light;
+        Wpf.Ui.Appearance.ApplicationThemeManager.Apply(appTheme);
         Log.Info("WPF Application initialized with WPF-UI resources");
     }
 

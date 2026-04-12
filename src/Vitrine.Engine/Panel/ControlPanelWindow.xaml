@@ -11,35 +11,51 @@
     ExtendsContentIntoTitleBar="True"
     WindowBackdropType="Mica">
 
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+    <DockPanel>
+        <ui:TitleBar DockPanel.Dock="Top" Title="Vitrine" ShowMaximize="True" ShowMinimize="True" />
 
-        <ui:TitleBar Grid.Row="0" Title="Vitrine" ShowMaximize="True" ShowMinimize="True" />
-
-        <Grid Grid.Row="1">
+        <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="200" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- Sidebar: use a NavigationView in LeftMinimal-like mode -->
-            <ui:NavigationView
-                x:Name="NavView"
+            <!-- Navigation sidebar -->
+            <ui:ListView
+                x:Name="NavList"
                 Grid.Column="0"
-                PaneDisplayMode="Left"
-                IsBackButtonVisible="Collapsed"
-                IsPaneToggleVisible="False"
-                OpenPaneLength="200"
-                SelectionChanged="OnNavChanged" />
+                Margin="4,8,4,8"
+                SelectionChanged="OnNavChanged">
+                <ui:ListViewItem Tag="home">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Home24" Margin="0,0,12,0" />
+                        <TextBlock Text="Home" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ui:ListViewItem>
+                <ui:ListViewItem Tag="themes">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Color24" Margin="0,0,12,0" />
+                        <TextBlock Text="Themes" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ui:ListViewItem>
+                <ui:ListViewItem Tag="about">
+                    <StackPanel Orientation="Horizontal">
+                        <ui:SymbolIcon Symbol="Info24" Margin="0,0,12,0" />
+                        <TextBlock Text="About" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ui:ListViewItem>
+            </ui:ListView>
 
-            <!-- Content -->
-            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-                <ContentPresenter x:Name="PageContent" Margin="0,0,0,24" />
-            </ScrollViewer>
+            <!-- Content area -->
+            <Border Grid.Column="1"
+                    Background="{DynamicResource ApplicationBackgroundBrush}"
+                    CornerRadius="8,0,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <ContentPresenter x:Name="PageContent" />
+                </ScrollViewer>
+            </Border>
         </Grid>
-    </Grid>
+    </DockPanel>
 
 </ui:FluentWindow>
