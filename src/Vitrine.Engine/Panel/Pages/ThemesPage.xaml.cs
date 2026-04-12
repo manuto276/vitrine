@@ -148,6 +148,15 @@ internal partial class ThemesPage : System.Windows.Controls.UserControl
             });
         }
 
+        // Author and version
+        info.Children.Add(new TextBlock
+        {
+            Text = $"{manifest.Author} · v{manifest.Version}",
+            FontSize = 11,
+            Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorTertiaryBrush"),
+            Margin = new Thickness(0, 4, 0, 0),
+        });
+
         // Action buttons
         var actions = new StackPanel
         {
