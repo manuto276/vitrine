@@ -36,7 +36,8 @@ build-themes:
 	done
 
 installer: release
-	@echo "Building installer (requires Inno Setup on Windows)"
+	@command -v iscc >/dev/null 2>&1 || { echo "Error: Inno Setup (iscc) not found. Install it from https://jrsoftware.org/isinfo.php (Windows only)."; exit 1; }
+	@echo "Building installer..."
 	iscc installer/vitrine.iss
 
 clean:
