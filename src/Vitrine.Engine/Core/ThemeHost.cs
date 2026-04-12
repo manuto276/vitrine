@@ -257,12 +257,15 @@ internal class ThemeHost : IDisposable
         app.Resources.MergedDictionaries.Add(new Wpf.Ui.Markup.ControlsDictionary());
 
         // Follow system theme (light/dark)
+        // SystemTheme has many values (Glow, CapturedMotion, Sunrise, Flow, etc.)
+        // — only Light and HCWhite are light themes, everything else is dark
         var systemTheme = Wpf.Ui.Appearance.ApplicationThemeManager.GetSystemTheme();
-        var appTheme = systemTheme == Wpf.Ui.Appearance.SystemTheme.Dark
-            ? Wpf.Ui.Appearance.ApplicationTheme.Dark
-            : Wpf.Ui.Appearance.ApplicationTheme.Light;
+        var appTheme = systemTheme is Wpf.Ui.Appearance.SystemTheme.Light
+                                   or Wpf.Ui.Appearance.SystemTheme.HCWhite
+            ? Wpf.Ui.Appearance.ApplicationTheme.Light
+            : Wpf.Ui.Appearance.ApplicationTheme.Dark;
         Wpf.Ui.Appearance.ApplicationThemeManager.Apply(appTheme);
-        Log.Info("WPF Application initialized with WPF-UI resources");
+        Log.Info($"WPF Application initialized — SystemTheme={systemTheme}, AppTheme={appTheme}");
     }
 
     private void SetupTrayIcon()
