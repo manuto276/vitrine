@@ -35,6 +35,7 @@ SetCompressor /SOLID lzma
 VIProductVersion "${VERSION}.0"
 VIAddVersionKey "ProductName" "Vitrine"
 VIAddVersionKey "ProductVersion" "${VERSION}"
+VIAddVersionKey "FileVersion" "${VERSION}.0"
 VIAddVersionKey "FileDescription" "Vitrine Installer"
 VIAddVersionKey "LegalCopyright" "Vitrine contributors"
 
