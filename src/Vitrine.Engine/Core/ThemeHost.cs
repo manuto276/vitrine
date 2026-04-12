@@ -215,18 +215,37 @@ internal class ThemeHost : IDisposable
             return;
         }
 
-        // Initialize WPF Application if not already done (needed for WPF-UI resources)
-        if (System.Windows.Application.Current == null)
+        try
         {
-            new System.Windows.Application
-            {
-                ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown
-            };
-            Wpf.Ui.Appearance.ApplicationThemeManager.Apply(Wpf.Ui.Appearance.ApplicationTheme.Light);
+            EnsureWpfApplication();
+            _controlPanel = new ControlPanelWindow(this);
+            _controlPanel.Show();
         }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to open Control Panel", ex);
+            MessageBox.Show(
+                $"Failed to open Control Panel:\n\n{ex.Message}",
+                "Vitrine", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
 
-        _controlPanel = new ControlPanelWindow(this);
-        _controlPanel.Show();
+    private static void EnsureWpfApplication()
+    {
+        if (System.Windows.Application.Current != null) return;
+
+        var app = new System.Windows.Application
+        {
+            ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown
+        };
+
+        // Load WPF-UI resource dictionaries
+        app.Resources = new System.Windows.ResourceDictionary();
+        app.Resources.MergedDictionaries.Add(new Wpf.Ui.Markup.ThemesDictionary());
+        app.Resources.MergedDictionaries.Add(new Wpf.Ui.Markup.ControlsDictionary());
+
+        Wpf.Ui.Appearance.ApplicationThemeManager.Apply(Wpf.Ui.Appearance.ApplicationTheme.Light);
+        Log.Info("WPF Application initialized with WPF-UI resources");
     }
 
     private void SetupTrayIcon()
