@@ -7,10 +7,24 @@
 
     <StackPanel Margin="36,24,36,24">
 
-        <TextBlock Text="Themes" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,4" />
-        <TextBlock Text="Select a theme to apply. Themes are loaded from %APPDATA%\Vitrine\themes\."
-                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"
-                   Margin="0,0,0,20" />
+        <Grid Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Themes" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="Select a theme to apply, or install a new one from a .zip file."
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" />
+            </StackPanel>
+            <ui:Button Grid.Column="1" Appearance="Primary" Click="OnInstallClick"
+                       VerticalAlignment="Top" Margin="0,4,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Symbol="Add24" Margin="0,0,8,0" />
+                    <TextBlock Text="Install Theme" />
+                </StackPanel>
+            </ui:Button>
+        </Grid>
 
         <StackPanel x:Name="ThemeList" />
 
