@@ -265,6 +265,11 @@ internal class ThemeHost : IDisposable
             ? Wpf.Ui.Appearance.ApplicationTheme.Light
             : Wpf.Ui.Appearance.ApplicationTheme.Dark;
         Wpf.Ui.Appearance.ApplicationThemeManager.Apply(appTheme);
+
+        // Bridge WinForms message loop to WPF input system so TextInput events
+        // are properly raised in WPF TextBoxes hosted in this WinForms-based app
+        Application.AddMessageFilter(new Vitrine.Engine.Panel.WpfMessageFilter());
+
         Log.Info($"WPF Application initialized — SystemTheme={systemTheme}, AppTheme={appTheme}");
     }
 

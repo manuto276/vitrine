@@ -3,14 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using Brush = System.Windows.Media.Brush;
+using Brushes = System.Windows.Media.Brushes;
 using Vitrine.Engine.Core;
 using Vitrine.Engine.Themes;
 
 namespace Vitrine.Engine.Panel.Pages;
 
-internal partial class SettingsPage : System.Windows.Controls.Page
+internal partial class SettingsPage : System.Windows.Controls.UserControl
 {
     private readonly ThemeHost _host;
     private readonly ControlPanelWindow? _window;
@@ -19,6 +22,9 @@ internal partial class SettingsPage : System.Windows.Controls.Page
     private Dictionary<string, JsonElement>? _settings;
     private readonly Dictionary<string, Func<object>> _controls = new();
     private readonly Dictionary<string, UIElement> _cardElements = new();
+    private readonly HashSet<string> _invalidKeys = new();
+    private bool _dirty;
+    private bool _savedOnce;
 
     public SettingsPage(ThemeHost host, string? themeName = null, ControlPanelWindow? window = null)
     {
@@ -76,18 +82,18 @@ internal partial class SettingsPage : System.Windows.Controls.Page
         SettingsPanel.Children.Clear();
         _controls.Clear();
         _cardElements.Clear();
+        _invalidKeys.Clear();
 
         bool isFirst = true;
 
         foreach (var section in _sections!)
         {
-            // Section header
             SettingsPanel.Children.Add(new TextBlock
             {
                 Text = section.Title,
                 FontSize = 14,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"),
+                Foreground = (Brush)FindResource("TextFillColorSecondaryBrush"),
                 Margin = new Thickness(0, isFirst ? 0 : 20, 0, 8),
             });
             isFirst = false;
@@ -98,14 +104,27 @@ internal partial class SettingsPage : System.Windows.Controls.Page
                     ? val
                     : (def.Default.HasValue ? def.Default.Value : default);
 
-                var card = new Wpf.Ui.Controls.CardControl { Margin = new Thickness(0, 0, 0, 4) };
+                var card = new Border
+                {
+                    Margin = new Thickness(0, 0, 0, 4),
+                    Padding = new Thickness(16, 12, 16, 12),
+                    Background = (Brush)FindResource("CardBackgroundFillColorDefaultBrush"),
+                    BorderBrush = (Brush)FindResource("CardStrokeColorDefaultBrush"),
+                    BorderThickness = new Thickness(1),
+                    CornerRadius = new CornerRadius(8),
+                    Focusable = false,
+                };
 
-                var header = new StackPanel();
+                var grid = new Grid();
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var header = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
                 header.Children.Add(new TextBlock
                 {
                     Text = def.Label.Length > 0 ? def.Label : key,
                     FontWeight = FontWeights.SemiBold,
-                    Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorPrimaryBrush"),
+                    Foreground = (Brush)FindResource("TextFillColorPrimaryBrush"),
                 });
                 if (def.Description.Length > 0)
                 {
@@ -113,12 +132,23 @@ internal partial class SettingsPage : System.Windows.Controls.Page
                     {
                         Text = def.Description,
                         FontSize = 12,
-                        Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"),
+                        Foreground = (Brush)FindResource("TextFillColorSecondaryBrush"),
                         TextWrapping = TextWrapping.Wrap,
                     });
                 }
-                card.Header = header;
-                card.Content = CreateControl(key, def, currentValue);
+                Grid.SetColumn(header, 0);
+                grid.Children.Add(header);
+
+                var control = CreateControl(key, def, currentValue);
+                if (control is FrameworkElement fe)
+                {
+                    fe.VerticalAlignment = VerticalAlignment.Center;
+                    fe.Margin = new Thickness(16, 0, 0, 0);
+                }
+                Grid.SetColumn(control, 1);
+                grid.Children.Add(control);
+
+                card.Child = grid;
 
                 _cardElements[key] = card;
                 SettingsPanel.Children.Add(card);
@@ -126,6 +156,7 @@ internal partial class SettingsPage : System.Windows.Controls.Page
         }
 
         UpdateVisibility();
+        RefreshSaveButton();
     }
 
     private UIElement CreateControl(string key, SettingsDefinition def, JsonElement value)
@@ -190,7 +221,37 @@ internal partial class SettingsPage : System.Windows.Controls.Page
             Text = value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString(),
             MinWidth = 200,
         };
-        textBox.TextChanged += (_, _) => MarkDirty();
+
+
+        Regex? regex = null;
+        if (!string.IsNullOrEmpty(def.Pattern))
+        {
+            try { regex = new Regex(def.Pattern); }
+            catch (ArgumentException ex) { Log.Warn($"Invalid regex for setting '{key}': {ex.Message}"); }
+        }
+
+        void Validate()
+        {
+            if (regex == null) return;
+            if (regex.IsMatch(textBox.Text ?? ""))
+            {
+                _invalidKeys.Remove(key);
+                textBox.ClearValue(System.Windows.Controls.Control.BorderBrushProperty);
+                textBox.ToolTip = null;
+            }
+            else
+            {
+                _invalidKeys.Add(key);
+                textBox.BorderBrush = Brushes.IndianRed;
+                textBox.ToolTip = !string.IsNullOrEmpty(def.PatternMessage)
+                    ? def.PatternMessage
+                    : $"Value must match pattern: {def.Pattern}";
+            }
+            RefreshSaveButton();
+        }
+
+        textBox.TextChanged += (_, _) => { MarkDirty(); Validate(); };
+        Validate();
         _controls[key] = () => textBox.Text ?? "";
         return textBox;
     }
@@ -203,28 +264,34 @@ internal partial class SettingsPage : System.Windows.Controls.Page
         {
             foreach (var (key, def) in section.Settings)
             {
-                if (def.VisibleWhen == null || !_cardElements.TryGetValue(key, out var card))
+                if (!_cardElements.TryGetValue(key, out var card))
                     continue;
 
-                var conditionKey = def.VisibleWhen.Key;
-                if (!_controls.TryGetValue(conditionKey, out var getter))
-                    continue;
+                if (def.VisibleWhen != null && EvaluateCondition(def.VisibleWhen) is bool visible)
+                    card.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
 
-                var currentValue = getter();
-                var expectedValue = def.VisibleWhen.Value;
-
-                bool visible = expectedValue.ValueKind switch
-                {
-                    JsonValueKind.True => currentValue is true,
-                    JsonValueKind.False => currentValue is false,
-                    JsonValueKind.String => currentValue?.ToString() == expectedValue.GetString(),
-                    JsonValueKind.Number => currentValue is double d && Math.Abs(d - expectedValue.GetDouble()) < 0.001,
-                    _ => true,
-                };
-
-                card.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+                if (def.DisabledWhen != null && EvaluateCondition(def.DisabledWhen) is bool disabled)
+                    ((UIElement)card).IsEnabled = !disabled;
             }
         }
+    }
+
+    private bool? EvaluateCondition(VisibilityCondition condition)
+    {
+        if (!_controls.TryGetValue(condition.Key, out var getter))
+            return null;
+
+        var currentValue = getter();
+        var expectedValue = condition.Value;
+
+        return expectedValue.ValueKind switch
+        {
+            JsonValueKind.True => currentValue is true,
+            JsonValueKind.False => currentValue is false,
+            JsonValueKind.String => currentValue?.ToString() == expectedValue.GetString(),
+            JsonValueKind.Number => currentValue is double d && Math.Abs(d - expectedValue.GetDouble()) < 0.001,
+            _ => null,
+        };
     }
 
     private void OnBackClick(object sender, RoutedEventArgs e)
@@ -234,8 +301,20 @@ internal partial class SettingsPage : System.Windows.Controls.Page
 
     private void MarkDirty()
     {
-        SaveButton.IsEnabled = true;
-        SaveButton.Content = "Save & Apply";
+        _dirty = true;
+        RefreshSaveButton();
+    }
+
+    private void RefreshSaveButton()
+    {
+        if (_invalidKeys.Count > 0)
+        {
+            SaveButton.IsEnabled = false;
+            SaveButton.Content = "Fix errors to save";
+            return;
+        }
+        SaveButton.IsEnabled = _dirty;
+        SaveButton.Content = _dirty ? "Save & Apply" : (_savedOnce ? "Saved" : "Save & Apply");
     }
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
@@ -251,8 +330,9 @@ internal partial class SettingsPage : System.Windows.Controls.Page
 
         _host.ReloadActiveTheme();
 
-        SaveButton.IsEnabled = false;
-        SaveButton.Content = "Saved";
+        _dirty = false;
+        _savedOnce = true;
+        RefreshSaveButton();
         Log.Info($"Settings saved for theme '{_themeName}'");
     }
 

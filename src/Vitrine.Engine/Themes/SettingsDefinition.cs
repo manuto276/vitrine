@@ -30,8 +30,17 @@ internal class SettingsDefinition
     [JsonPropertyName("visibleWhen")]
     public VisibilityCondition? VisibleWhen { get; set; }
 
+    [JsonPropertyName("disabledWhen")]
+    public VisibilityCondition? DisabledWhen { get; set; }
+
     [JsonPropertyName("options")]
     public List<SettingsOption>? Options { get; set; }
+
+    [JsonPropertyName("pattern")]
+    public string? Pattern { get; set; }
+
+    [JsonPropertyName("patternMessage")]
+    public string? PatternMessage { get; set; }
 }
 
 internal class SettingsOption
