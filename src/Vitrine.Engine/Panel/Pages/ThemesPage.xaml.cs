@@ -225,7 +225,7 @@ internal partial class ThemesPage : System.Windows.Controls.Page
         return null;
     }
 
-    private void OnInstallClick(object sender, RoutedEventArgs e)
+    private async void OnInstallClick(object sender, RoutedEventArgs e)
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
@@ -244,9 +244,7 @@ internal partial class ThemesPage : System.Windows.Controls.Page
         catch (Exception ex)
         {
             Log.Error("Failed to install theme", ex);
-            System.Windows.MessageBox.Show(
-                $"Failed to install theme:\n\n{ex.Message}",
-                "Vitrine", MessageBoxButton.OK, MessageBoxImage.Error);
+            await ShowErrorAsync("Failed to install theme", ex.Message);
         }
     }
 
@@ -321,13 +319,19 @@ internal partial class ThemesPage : System.Windows.Controls.Page
         return "";
     }
 
-    private void RemoveTheme(string themeId, string themeName)
+    private async void RemoveTheme(string themeId, string themeName)
     {
-        var result = System.Windows.MessageBox.Show(
-            $"Remove theme \"{themeName}\"?\n\nThis will delete the theme folder and cannot be undone.",
-            "Vitrine", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        var dialog = new Wpf.Ui.Controls.MessageBox
+        {
+            Title = "Remove Theme",
+            Content = $"Remove theme \"{themeName}\"?\n\nThis will delete the theme folder and cannot be undone.",
+            PrimaryButtonText = "Remove",
+            PrimaryButtonAppearance = Wpf.Ui.Controls.ControlAppearance.Danger,
+            CloseButtonText = "Cancel",
+        };
 
-        if (result != MessageBoxResult.Yes) return;
+        var result = await dialog.ShowDialogAsync();
+        if (result != Wpf.Ui.Controls.MessageBoxResult.Primary) return;
 
         try
         {
@@ -342,9 +346,18 @@ internal partial class ThemesPage : System.Windows.Controls.Page
         catch (Exception ex)
         {
             Log.Error($"Failed to remove theme '{themeId}'", ex);
-            System.Windows.MessageBox.Show(
-                $"Failed to remove theme:\n\n{ex.Message}",
-                "Vitrine", MessageBoxButton.OK, MessageBoxImage.Error);
+            await ShowErrorAsync("Failed to remove theme", ex.Message);
         }
+    }
+
+    private static async System.Threading.Tasks.Task ShowErrorAsync(string title, string message)
+    {
+        var dialog = new Wpf.Ui.Controls.MessageBox
+        {
+            Title = title,
+            Content = message,
+            CloseButtonText = "OK",
+        };
+        await dialog.ShowDialogAsync();
     }
 }
