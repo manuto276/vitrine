@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
+using Vitrine.Engine.Panel;
 using Vitrine.Engine.SystemInfo;
 using Vitrine.Engine.Themes;
 
@@ -15,14 +16,17 @@ namespace Vitrine.Engine.Core;
 internal class ThemeHost : IDisposable
 {
     private ThemeWindow? _window;
+    private ControlPanelWindow? _controlPanel;
     private NotifyIcon? _trayIcon;
-    private ToolStripMenuItem? _themesMenu;
     private readonly SystemInfoProvider _systemInfo = new();
     private Configuration _config = null!;
 
     internal void Start()
     {
         Log.Info("ThemeHost.Start — begin parallel init");
+
+        // 0. Initialize WPF Application early (needed for tray context menu styling)
+        EnsureWpfApplication();
 
         // 1. Fire WebView2 environment creation immediately (runs on thread pool)
         var envTask = CoreWebView2Environment.CreateAsync();
@@ -68,7 +72,7 @@ internal class ThemeHost : IDisposable
 
                 var theme = await themeTask;
                 if (theme.js != null)
-                    _window.LoadThemeContent(theme.js, theme.css);
+                    _window.LoadThemeContent(theme.js, theme.css, theme.settings);
                 else
                     LoadActiveTheme(); // fallback: read from disk
             }
@@ -83,19 +87,19 @@ internal class ThemeHost : IDisposable
         Log.Info("ThemeHost started successfully");
     }
 
-    private (string? js, string? css) PreReadActiveTheme()
+    private (string? js, string? css, string? settings) PreReadActiveTheme()
     {
         try
         {
             var themePath = Path.Combine(Configuration.ThemesPath, _config.ActiveTheme);
             var manifestPath = Path.Combine(themePath, "theme.json");
-            if (!File.Exists(manifestPath)) return (null, null);
+            if (!File.Exists(manifestPath)) return (null, null, null);
 
             var manifest = JsonSerializer.Deserialize<ThemeManifest>(File.ReadAllText(manifestPath));
-            if (manifest == null) return (null, null);
+            if (manifest == null) return (null, null, null);
 
             var entryPath = Path.Combine(themePath, manifest.Entry);
-            if (!File.Exists(entryPath)) return (null, null);
+            if (!File.Exists(entryPath)) return (null, null, null);
 
             var js = File.ReadAllText(entryPath);
             Log.Info($"Theme JS pre-read — {js.Length} chars");
@@ -105,12 +109,17 @@ internal class ThemeHost : IDisposable
             if (css != null)
                 Log.Info($"Theme CSS pre-read — {css.Length} chars");
 
-            return (js, css);
+            var settingsPath = Path.Combine(themePath, "settings.json");
+            string? settings = File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null;
+            if (settings != null)
+                Log.Info($"Theme settings pre-read — {settings.Length} chars");
+
+            return (js, css, settings);
         }
         catch (Exception ex)
         {
             Log.Warn($"Pre-read failed, will load on main thread: {ex.Message}");
-            return (null, null);
+            return (null, null, null);
         }
     }
 
@@ -120,7 +129,7 @@ internal class ThemeHost : IDisposable
         var targetPath = Path.Combine(Configuration.ThemesPath, "default");
         var targetManifest = Path.Combine(targetPath, "theme.json");
 
-        if (!File.Exists(targetManifest) || !ThemeIsComplete(targetPath))
+        if (!File.Exists(targetManifest) || !ThemeIsComplete(targetPath) || BundledThemeIsNewer(bundledPath, targetPath))
         {
             Log.Info("Installing/repairing default theme");
             Directory.CreateDirectory(Configuration.ThemesPath);
@@ -160,6 +169,18 @@ internal class ThemeHost : IDisposable
         catch { return false; }
     }
 
+    private static bool BundledThemeIsNewer(string bundledPath, string targetPath)
+    {
+        try
+        {
+            var bundledJs = Path.Combine(bundledPath, "theme.js");
+            var targetJs = Path.Combine(targetPath, "theme.js");
+            if (!File.Exists(bundledJs) || !File.Exists(targetJs)) return false;
+            return File.GetLastWriteTimeUtc(bundledJs) > File.GetLastWriteTimeUtc(targetJs);
+        }
+        catch { return false; }
+    }
+
     private void LoadActiveTheme()
     {
         var themePath = Path.Combine(Configuration.ThemesPath, _config.ActiveTheme);
@@ -189,75 +210,103 @@ internal class ThemeHost : IDisposable
         _window?.LoadTheme(themePath, manifest.Entry);
     }
 
-    private void SwitchTheme(string themeName)
+    internal void SetActiveTheme(string themeName)
     {
         Log.Info($"Switching theme to '{themeName}'");
         _config.ActiveTheme = themeName;
         _config.Save();
         LoadActiveTheme();
-        UpdateThemeMenuChecks();
+    }
+
+    internal void ReloadActiveTheme() => LoadActiveTheme();
+
+    private void OpenControlPanel()
+    {
+        if (_controlPanel != null && _controlPanel.IsVisible)
+        {
+            _controlPanel.Activate();
+            return;
+        }
+
+        try
+        {
+            _controlPanel = new ControlPanelWindow(this);
+            _controlPanel.Show();
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to open Control Panel", ex);
+            MessageBox.Show(
+                $"Failed to open Control Panel:\n\n{ex.Message}",
+                "Vitrine", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private static void EnsureWpfApplication()
+    {
+        if (System.Windows.Application.Current != null) return;
+
+        var app = new System.Windows.Application
+        {
+            ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown
+        };
+
+        // Load WPF-UI resource dictionaries
+        app.Resources = new System.Windows.ResourceDictionary();
+        app.Resources.MergedDictionaries.Add(new Wpf.Ui.Markup.ThemesDictionary());
+        app.Resources.MergedDictionaries.Add(new Wpf.Ui.Markup.ControlsDictionary());
+
+        // Follow system theme (light/dark)
+        // SystemTheme has many values (Glow, CapturedMotion, Sunrise, Flow, etc.)
+        // — only Light and HCWhite are light themes, everything else is dark
+        var systemTheme = Wpf.Ui.Appearance.ApplicationThemeManager.GetSystemTheme();
+        var appTheme = systemTheme is Wpf.Ui.Appearance.SystemTheme.Light
+                                   or Wpf.Ui.Appearance.SystemTheme.HCWhite
+            ? Wpf.Ui.Appearance.ApplicationTheme.Light
+            : Wpf.Ui.Appearance.ApplicationTheme.Dark;
+        Wpf.Ui.Appearance.ApplicationThemeManager.Apply(appTheme);
+        Log.Info($"WPF Application initialized — SystemTheme={systemTheme}, AppTheme={appTheme}");
     }
 
     private void SetupTrayIcon()
     {
-        var menu = new ContextMenuStrip();
-        menu.Opening += (_, _) => RefreshThemeList();
+        // WPF ContextMenu styled by WPF-UI (Fluent Design)
+        var wpfMenu = new System.Windows.Controls.ContextMenu();
 
-        _themesMenu = new ToolStripMenuItem("Themes");
-        RefreshThemeList();
-        menu.Items.Add(_themesMenu);
+        var openItem = new Wpf.Ui.Controls.MenuItem
+        {
+            Header = "Open Control Panel",
+            Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Settings24 },
+        };
+        openItem.Click += (_, _) => OpenControlPanel();
 
-        menu.Items.Add("Reload Theme", null, (_, _) => LoadActiveTheme());
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Exit", null, (_, _) => Shutdown());
+        var exitItem = new Wpf.Ui.Controls.MenuItem
+        {
+            Header = "Exit",
+            Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Power24 },
+        };
+        exitItem.Click += (_, _) => Shutdown();
+
+        wpfMenu.Items.Add(openItem);
+        wpfMenu.Items.Add(new System.Windows.Controls.Separator());
+        wpfMenu.Items.Add(exitItem);
 
         _trayIcon = new NotifyIcon
         {
             Icon = LoadIcon(),
             Text = "Vitrine",
             Visible = true,
-            ContextMenuStrip = menu,
         };
-    }
 
-    private void RefreshThemeList()
-    {
-        if (_themesMenu == null) return;
-        _themesMenu.DropDownItems.Clear();
-
-        var themesPath = Configuration.ThemesPath;
-        if (!Directory.Exists(themesPath)) return;
-
-        foreach (var themeDir in Directory.GetDirectories(themesPath).OrderBy(d => d))
+        _trayIcon.MouseClick += (_, e) =>
         {
-            var manifestPath = Path.Combine(themeDir, "theme.json");
-            if (!File.Exists(manifestPath)) continue;
-
-            var name = Path.GetFileName(themeDir);
-            string displayName = name;
-
-            try
+            if (e.Button == MouseButtons.Right)
             {
-                var manifest = JsonSerializer.Deserialize<ThemeManifest>(File.ReadAllText(manifestPath));
-                if (manifest?.Name is { Length: > 0 } n) displayName = n;
+                wpfMenu.IsOpen = true;
             }
-            catch { /* use folder name */ }
+        };
 
-            var item = new ToolStripMenuItem(displayName)
-            {
-                Tag = name,
-                Checked = name == _config.ActiveTheme,
-            };
-            item.Click += (_, _) => SwitchTheme(name);
-            _themesMenu.DropDownItems.Add(item);
-        }
-    }
-
-    private void UpdateThemeMenuChecks()
-    {
-        if (_themesMenu == null) return;
-        foreach (ToolStripMenuItem item in _themesMenu.DropDownItems)
-            item.Checked = (string?)item.Tag == _config.ActiveTheme;
+        _trayIcon.DoubleClick += (_, _) => OpenControlPanel();
     }
 
     private void OnThemeMessage(object? sender, string messageJson)
