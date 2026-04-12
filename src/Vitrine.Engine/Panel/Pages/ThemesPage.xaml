@@ -26,7 +26,13 @@
             </ui:Button>
         </Grid>
 
-        <StackPanel x:Name="ThemeList" />
+        <ItemsControl x:Name="ThemeList">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+        </ItemsControl>
 
     </StackPanel>
 </UserControl>

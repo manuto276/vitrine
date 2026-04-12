@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using Microsoft.Win32;
+using System.Windows.Media.Imaging;
 using Vitrine.Engine.Core;
 using Vitrine.Engine.Themes;
 
@@ -14,6 +14,8 @@ namespace Vitrine.Engine.Panel.Pages;
 
 internal partial class ThemesPage : System.Windows.Controls.UserControl
 {
+    private static readonly string[] PreviewNames = ["preview.png", "preview.jpg", "preview.jpeg", "preview.webp"];
+
     private readonly ThemeHost _host;
     private readonly ControlPanelWindow _window;
 
@@ -27,7 +29,7 @@ internal partial class ThemesPage : System.Windows.Controls.UserControl
 
     private void LoadThemes()
     {
-        ThemeList.Children.Clear();
+        ThemeList.Items.Clear();
         var config = Configuration.Load();
         var themesPath = Configuration.ThemesPath;
 
@@ -51,93 +53,167 @@ internal partial class ThemesPage : System.Windows.Controls.UserControl
             var isDefault = id == "default";
             var hasSettings = File.Exists(Path.Combine(dir, "settings.definitions.json"));
 
-            var card = new Wpf.Ui.Controls.CardControl { Margin = new Thickness(0, 0, 0, 4) };
+            ThemeList.Items.Add(BuildThemeCard(id, manifest, dir, isActive, isDefault, hasSettings));
+        }
+    }
 
-            var header = new StackPanel();
-            var namePanel = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+    private UIElement BuildThemeCard(string id, ThemeManifest manifest, string themePath,
+        bool isActive, bool isDefault, bool hasSettings)
+    {
+        var card = new Border
+        {
+            Width = 260,
+            Margin = new Thickness(0, 0, 12, 12),
+            Background = (System.Windows.Media.Brush)FindResource("CardBackgroundFillColorDefaultBrush"),
+            BorderBrush = isActive
+                ? (System.Windows.Media.Brush)FindResource("SystemAccentColorPrimaryBrush")
+                : (System.Windows.Media.Brush)FindResource("CardStrokeColorDefaultBrush"),
+            BorderThickness = new Thickness(isActive ? 2 : 1),
+            CornerRadius = new CornerRadius(8),
+            ClipToBounds = true,
+        };
+
+        var stack = new StackPanel();
+
+        // Preview image area
+        var previewPath = FindPreviewImage(themePath);
+        if (previewPath != null)
+        {
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.UriSource = new Uri(previewPath);
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.DecodePixelWidth = 520;
+            bitmap.EndInit();
+
+            stack.Children.Add(new System.Windows.Controls.Image
+            {
+                Source = bitmap,
+                Height = 140,
+                Stretch = Stretch.UniformToFill,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+            });
+        }
+        else
+        {
+            stack.Children.Add(new Border
+            {
+                Height = 140,
+                Background = (System.Windows.Media.Brush)FindResource("ControlFillColorDefaultBrush"),
+                Child = new TextBlock
+                {
+                    Text = "No preview available",
+                    Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorTertiaryBrush"),
+                    FontSize = 12,
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            });
+        }
+
+        // Info area
+        var info = new StackPanel { Margin = new Thickness(14, 10, 14, 12) };
+
+        var namePanel = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+        namePanel.Children.Add(new TextBlock
+        {
+            Text = manifest.Name.Length > 0 ? manifest.Name : id,
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 14,
+        });
+
+        if (isActive)
+        {
             namePanel.Children.Add(new TextBlock
             {
-                Text = manifest.Name.Length > 0 ? manifest.Name : id,
+                Text = " Active",
+                FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(15, 123, 15)),
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(6, 0, 0, 0),
             });
-
-            if (isActive)
-            {
-                namePanel.Children.Add(new TextBlock
-                {
-                    Text = " Active",
-                    FontSize = 11,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(15, 123, 15)),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(8, 0, 0, 0),
-                });
-            }
-
-            header.Children.Add(namePanel);
-
-            if (manifest.Description.Length > 0)
-            {
-                header.Children.Add(new TextBlock
-                {
-                    Text = manifest.Description,
-                    FontSize = 12,
-                    Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"),
-                });
-            }
-
-            card.Header = header;
-
-            var actions = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
-
-            if (hasSettings)
-            {
-                var settingsBtn = new Wpf.Ui.Controls.Button
-                {
-                    Content = "Settings",
-                    Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary,
-                    Margin = new Thickness(0, 0, 8, 0),
-                };
-                var capturedId = id;
-                settingsBtn.Click += (_, _) => _window.NavigateTo("settings", capturedId);
-                actions.Children.Add(settingsBtn);
-            }
-
-            if (!isActive)
-            {
-                var applyBtn = new Wpf.Ui.Controls.Button
-                {
-                    Content = "Apply",
-                    Appearance = Wpf.Ui.Controls.ControlAppearance.Primary,
-                    Margin = new Thickness(0, 0, 8, 0),
-                };
-                var capturedId = id;
-                applyBtn.Click += (_, _) =>
-                {
-                    Log.Info($"Applying theme '{capturedId}' from Control Panel");
-                    _host.SetActiveTheme(capturedId);
-                    LoadThemes();
-                };
-                actions.Children.Add(applyBtn);
-            }
-
-            // Delete button — not for default theme, not for active theme
-            if (!isDefault && !isActive)
-            {
-                var deleteBtn = new Wpf.Ui.Controls.Button
-                {
-                    Content = "Remove",
-                    Appearance = Wpf.Ui.Controls.ControlAppearance.Danger,
-                };
-                var capturedId = id;
-                var capturedName = manifest.Name.Length > 0 ? manifest.Name : id;
-                deleteBtn.Click += (_, _) => RemoveTheme(capturedId, capturedName);
-                actions.Children.Add(deleteBtn);
-            }
-
-            card.Content = actions;
-            ThemeList.Children.Add(card);
         }
+        info.Children.Add(namePanel);
+
+        if (manifest.Description.Length > 0)
+        {
+            info.Children.Add(new TextBlock
+            {
+                Text = manifest.Description,
+                FontSize = 12,
+                Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 2, 0, 0),
+            });
+        }
+
+        // Action buttons
+        var actions = new StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            Margin = new Thickness(0, 8, 0, 0),
+        };
+
+        if (!isActive)
+        {
+            var applyBtn = new Wpf.Ui.Controls.Button
+            {
+                Content = "Apply",
+                Appearance = Wpf.Ui.Controls.ControlAppearance.Primary,
+                Margin = new Thickness(0, 0, 6, 0),
+            };
+            var capturedId = id;
+            applyBtn.Click += (_, _) =>
+            {
+                Log.Info($"Applying theme '{capturedId}' from Control Panel");
+                _host.SetActiveTheme(capturedId);
+                LoadThemes();
+            };
+            actions.Children.Add(applyBtn);
+        }
+
+        if (hasSettings)
+        {
+            var settingsBtn = new Wpf.Ui.Controls.Button
+            {
+                Content = "Settings",
+                Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary,
+                Margin = new Thickness(0, 0, 6, 0),
+            };
+            var capturedId = id;
+            settingsBtn.Click += (_, _) => _window.NavigateTo("settings", capturedId);
+            actions.Children.Add(settingsBtn);
+        }
+
+        if (!isDefault && !isActive)
+        {
+            var deleteBtn = new Wpf.Ui.Controls.Button
+            {
+                Content = "Remove",
+                Appearance = Wpf.Ui.Controls.ControlAppearance.Danger,
+            };
+            var capturedId = id;
+            var capturedName = manifest.Name.Length > 0 ? manifest.Name : id;
+            deleteBtn.Click += (_, _) => RemoveTheme(capturedId, capturedName);
+            actions.Children.Add(deleteBtn);
+        }
+
+        info.Children.Add(actions);
+        stack.Children.Add(info);
+        card.Child = stack;
+
+        return card;
+    }
+
+    private static string? FindPreviewImage(string themePath)
+    {
+        foreach (var name in PreviewNames)
+        {
+            var path = Path.Combine(themePath, name);
+            if (File.Exists(path)) return path;
+        }
+        return null;
     }
 
     private void OnInstallClick(object sender, RoutedEventArgs e)
@@ -171,15 +247,12 @@ internal partial class ThemesPage : System.Windows.Controls.UserControl
 
         using var archive = ZipFile.OpenRead(zipPath);
 
-        // Check for required files — theme.json and theme.js must exist
-        // They can be at the root or inside a single subfolder
         var prefix = DetectZipPrefix(archive);
 
         var manifestEntry = archive.GetEntry(prefix + "theme.json");
         if (manifestEntry == null)
             throw new FileNotFoundException("The zip file does not contain a theme.json file.");
 
-        // Read manifest to get the theme name for the folder
         using var manifestStream = manifestEntry.Open();
         var manifest = JsonSerializer.Deserialize<ThemeManifest>(manifestStream);
         if (manifest == null)
@@ -189,7 +262,6 @@ internal partial class ThemesPage : System.Windows.Controls.UserControl
         if (archive.GetEntry(entryFile) == null)
             throw new FileNotFoundException($"The zip file does not contain the entry file: {manifest.Entry}");
 
-        // Determine folder name from zip filename
         var themeDirName = Path.GetFileNameWithoutExtension(zipPath)
             .ToLowerInvariant()
             .Replace(' ', '-');
@@ -201,10 +273,9 @@ internal partial class ThemesPage : System.Windows.Controls.UserControl
 
         Directory.CreateDirectory(targetPath);
 
-        // Extract all files, stripping the prefix
         foreach (var entry in archive.Entries)
         {
-            if (string.IsNullOrEmpty(entry.Name)) continue; // skip directories
+            if (string.IsNullOrEmpty(entry.Name)) continue;
 
             var relativePath = entry.FullName;
             if (prefix.Length > 0 && relativePath.StartsWith(prefix))
@@ -220,17 +291,11 @@ internal partial class ThemesPage : System.Windows.Controls.UserControl
         Log.Info($"Theme installed to {targetPath}");
     }
 
-    /// <summary>
-    /// Detects if zip contents are in a subfolder (e.g. "my-theme/theme.json")
-    /// or at the root ("theme.json"). Returns the prefix to strip.
-    /// </summary>
     private static string DetectZipPrefix(ZipArchive archive)
     {
-        // Check if theme.json is at the root
         if (archive.GetEntry("theme.json") != null)
             return "";
 
-        // Check if it's inside a single subfolder
         var dirs = archive.Entries
             .Select(e => e.FullName.Split('/')[0])
             .Where(d => !string.IsNullOrEmpty(d))

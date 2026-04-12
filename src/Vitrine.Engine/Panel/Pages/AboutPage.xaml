@@ -7,7 +7,7 @@
 
     <StackPanel Margin="36,24,36,24">
 
-        <TextBlock Text="About" Style="{DynamicResource TitleLargeTextBlockStyle}" Margin="0,0,0,24" />
+        <TextBlock Text="About" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,24" />
 
         <ui:CardControl Margin="0,0,0,4">
             <ui:CardControl.Header>
