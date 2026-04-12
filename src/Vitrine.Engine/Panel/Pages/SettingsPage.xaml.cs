@@ -35,10 +35,13 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
 
         if (!File.Exists(defsPath))
         {
+            Log.Info($"No definitions found for theme '{_themeName}'");
             EmptyText.Visibility = Visibility.Visible;
             ButtonBar.Visibility = Visibility.Collapsed;
             return;
         }
+
+        Log.Info($"Loading settings for theme '{_themeName}'");
 
         _definitions = JsonSerializer.Deserialize<Dictionary<string, SettingsDefinition>>(
             File.ReadAllText(defsPath));
@@ -189,6 +192,7 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
 
     private void OnResetClick(object sender, RoutedEventArgs e)
     {
+        Log.Info($"Resetting settings to defaults for theme '{_themeName}'");
         if (_definitions == null) return;
 
         // Rebuild with defaults

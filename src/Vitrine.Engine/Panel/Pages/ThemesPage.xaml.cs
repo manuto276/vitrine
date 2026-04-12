@@ -109,6 +109,7 @@ internal partial class ThemesPage : System.Windows.Controls.UserControl
                 var capturedId = id;
                 applyBtn.Click += (_, _) =>
                 {
+                    Log.Info($"Applying theme '{capturedId}' from Control Panel");
                     _host.SetActiveTheme(capturedId);
                     LoadThemes();
                 };

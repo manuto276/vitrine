@@ -18,11 +18,13 @@ internal partial class ControlPanelWindow : FluentWindow
     public ControlPanelWindow(ThemeHost host)
     {
         _host = host;
+        Log.Info("Control Panel opening");
         InitializeComponent();
 
         Loaded += (_, _) =>
         {
             _loaded = true;
+            Log.Info("Control Panel loaded");
             NavigateTo("home");
         };
     }
@@ -38,6 +40,7 @@ internal partial class ControlPanelWindow : FluentWindow
 
     internal void NavigateTo(string page, string? themeId = null)
     {
+        Log.Info($"Navigating to '{page}'" + (themeId != null ? $" (theme={themeId})" : ""));
         PageContent.Content = page switch
         {
             "home" => _homePage ??= new HomePage(_host, this),
