@@ -126,7 +126,7 @@ internal class ThemeHost : IDisposable
         var targetPath = Path.Combine(Configuration.ThemesPath, "default");
         var targetManifest = Path.Combine(targetPath, "theme.json");
 
-        if (!File.Exists(targetManifest) || !ThemeIsComplete(targetPath))
+        if (!File.Exists(targetManifest) || !ThemeIsComplete(targetPath) || BundledThemeIsNewer(bundledPath, targetPath))
         {
             Log.Info("Installing/repairing default theme");
             Directory.CreateDirectory(Configuration.ThemesPath);
@@ -162,6 +162,18 @@ internal class ThemeHost : IDisposable
             var manifest = JsonSerializer.Deserialize<ThemeManifest>(File.ReadAllText(manifestPath));
             if (manifest == null) return false;
             return File.Exists(Path.Combine(themePath, manifest.Entry));
+        }
+        catch { return false; }
+    }
+
+    private static bool BundledThemeIsNewer(string bundledPath, string targetPath)
+    {
+        try
+        {
+            var bundledJs = Path.Combine(bundledPath, "theme.js");
+            var targetJs = Path.Combine(targetPath, "theme.js");
+            if (!File.Exists(bundledJs) || !File.Exists(targetJs)) return false;
+            return File.GetLastWriteTimeUtc(bundledJs) > File.GetLastWriteTimeUtc(targetJs);
         }
         catch { return false; }
     }

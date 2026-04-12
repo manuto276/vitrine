@@ -44,7 +44,17 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
 
         Log.Info($"Loading settings for theme '{_themeName}'");
 
-        _sections = JsonSerializer.Deserialize<List<SettingsSection>>(File.ReadAllText(defsPath));
+        try
+        {
+            var defsJson = File.ReadAllText(defsPath);
+            _sections = JsonSerializer.Deserialize<List<SettingsSection>>(defsJson);
+        }
+        catch (JsonException ex)
+        {
+            Log.Warn($"Failed to parse definitions (may be old format): {ex.Message}");
+            _sections = null;
+        }
+
         _settings = File.Exists(settingsPath)
             ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(File.ReadAllText(settingsPath))
             : new();
