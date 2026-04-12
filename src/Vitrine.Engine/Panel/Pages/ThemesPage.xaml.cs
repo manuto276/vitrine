@@ -12,7 +12,7 @@ using Vitrine.Engine.Themes;
 
 namespace Vitrine.Engine.Panel.Pages;
 
-internal partial class ThemesPage : System.Windows.Controls.UserControl
+internal partial class ThemesPage : System.Windows.Controls.Page
 {
     private static readonly string[] PreviewNames = ["preview.png", "preview.jpg", "preview.jpeg", "preview.webp"];
 
@@ -191,7 +191,7 @@ internal partial class ThemesPage : System.Windows.Controls.UserControl
                 Margin = new Thickness(0, 0, 6, 0),
             };
             var capturedId = id;
-            settingsBtn.Click += (_, _) => _window.NavigateTo("settings", capturedId);
+            settingsBtn.Click += (_, _) => _window.NavigateToSettings(capturedId);
             actions.Children.Add(settingsBtn);
         }
 

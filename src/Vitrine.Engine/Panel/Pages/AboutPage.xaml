@@ -1,4 +1,4 @@
-<UserControl
+<Page
     x:Class="Vitrine.Engine.Panel.Pages.AboutPage"
     x:ClassModifier="internal"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -29,4 +29,4 @@
         </ui:CardControl>
 
     </StackPanel>
-</UserControl>
+</Page>

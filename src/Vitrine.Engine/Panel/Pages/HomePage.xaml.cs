@@ -4,7 +4,7 @@ using Vitrine.Engine.Core;
 
 namespace Vitrine.Engine.Panel.Pages;
 
-internal partial class HomePage : System.Windows.Controls.UserControl
+internal partial class HomePage : Page
 {
     private readonly ThemeHost _host;
     private readonly ControlPanelWindow _window;
@@ -26,12 +26,12 @@ internal partial class HomePage : System.Windows.Controls.UserControl
 
     private void OnChangeThemeClick(object sender, RoutedEventArgs e)
     {
-        _window.NavigateTo("themes");
+        _window.RootNavigation.Navigate(typeof(ThemesPage));
     }
 
     private void OnSettingsClick(object sender, RoutedEventArgs e)
     {
         var config = Configuration.Load();
-        _window.NavigateTo("settings", config.ActiveTheme);
+        _window.NavigateToSettings(config.ActiveTheme);
     }
 }

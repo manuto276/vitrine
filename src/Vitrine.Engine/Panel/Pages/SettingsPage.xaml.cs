@@ -10,7 +10,7 @@ using Vitrine.Engine.Themes;
 
 namespace Vitrine.Engine.Panel.Pages;
 
-internal partial class SettingsPage : System.Windows.Controls.UserControl
+internal partial class SettingsPage : System.Windows.Controls.Page
 {
     private readonly ThemeHost _host;
     private readonly string _themeName;

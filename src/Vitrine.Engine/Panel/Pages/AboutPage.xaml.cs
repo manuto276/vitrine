@@ -2,7 +2,7 @@ using System.Reflection;
 
 namespace Vitrine.Engine.Panel.Pages;
 
-internal partial class AboutPage : System.Windows.Controls.UserControl
+internal partial class AboutPage : System.Windows.Controls.Page
 {
     public AboutPage()
     {

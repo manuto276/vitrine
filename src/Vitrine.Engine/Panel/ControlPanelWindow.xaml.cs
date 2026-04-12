@@ -1,6 +1,5 @@
 using System;
 using System.Windows;
-using System.Windows.Controls;
 using Vitrine.Engine.Core;
 using Vitrine.Engine.Panel.Pages;
 using Wpf.Ui.Controls;
@@ -10,10 +9,11 @@ namespace Vitrine.Engine.Panel;
 internal partial class ControlPanelWindow : FluentWindow
 {
     private readonly ThemeHost _host;
+    private readonly PageService _pageService;
     private HomePage? _homePage;
     private ThemesPage? _themesPage;
     private AboutPage? _aboutPage;
-    private bool _loaded;
+    private string? _pendingSettingsTheme;
 
     public ControlPanelWindow(ThemeHost host)
     {
@@ -21,32 +21,29 @@ internal partial class ControlPanelWindow : FluentWindow
         Log.Info("Control Panel opening");
         InitializeComponent();
 
+        _pageService = new PageService();
+        _pageService.Register(() => _homePage ??= new HomePage(_host, this));
+        _pageService.Register(() => _themesPage ??= new ThemesPage(_host, this));
+        _pageService.Register(() =>
+        {
+            // SettingsPage is always created fresh with the pending theme id
+            return new SettingsPage(_host, _pendingSettingsTheme);
+        });
+        _pageService.Register(() => _aboutPage ??= new AboutPage());
+
+        RootNavigation.SetPageService(_pageService);
+
         Loaded += (_, _) =>
         {
-            _loaded = true;
             Log.Info("Control Panel loaded");
-            NavList.SelectedIndex = 0;
+            RootNavigation.Navigate(typeof(HomePage));
         };
     }
 
-    private void OnNavChanged(object sender, SelectionChangedEventArgs e)
+    internal void NavigateToSettings(string themeId)
     {
-        if (!_loaded) return;
-        if (NavList.SelectedItem is System.Windows.Controls.ListBoxItem item)
-            NavigateTo(item.Tag?.ToString() ?? "home");
-    }
-
-    internal void NavigateTo(string page, string? themeId = null)
-    {
-        Log.Info($"Navigating to '{page}'" + (themeId != null ? $" (theme={themeId})" : ""));
-
-        PageContent.Content = page switch
-        {
-            "home" => _homePage ??= new HomePage(_host, this),
-            "themes" => _themesPage ??= new ThemesPage(_host, this),
-            "settings" => new SettingsPage(_host, themeId),
-            "about" => _aboutPage ??= new AboutPage(),
-            _ => _homePage ??= new HomePage(_host, this),
-        };
+        Log.Info($"Navigating to settings (theme={themeId})");
+        _pendingSettingsTheme = themeId;
+        RootNavigation.Navigate(typeof(SettingsPage));
     }
 }

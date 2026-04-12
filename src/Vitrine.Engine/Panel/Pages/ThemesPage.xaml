@@ -1,4 +1,4 @@
-<UserControl
+<Page
     x:Class="Vitrine.Engine.Panel.Pages.ThemesPage"
     x:ClassModifier="internal"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -35,4 +35,4 @@
         </ItemsControl>
 
     </StackPanel>
-</UserControl>
+</Page>
