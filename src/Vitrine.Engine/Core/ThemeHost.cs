@@ -25,6 +25,9 @@ internal class ThemeHost : IDisposable
     {
         Log.Info("ThemeHost.Start — begin parallel init");
 
+        // 0. Initialize WPF Application early (needed for tray context menu styling)
+        EnsureWpfApplication();
+
         // 1. Fire WebView2 environment creation immediately (runs on thread pool)
         var envTask = CoreWebView2Environment.CreateAsync();
         Log.Info("WebView2 environment creation started (background)");
@@ -227,7 +230,6 @@ internal class ThemeHost : IDisposable
 
         try
         {
-            EnsureWpfApplication();
             _controlPanel = new ControlPanelWindow(this);
             _controlPanel.Show();
         }
@@ -265,17 +267,40 @@ internal class ThemeHost : IDisposable
 
     private void SetupTrayIcon()
     {
-        var menu = new ContextMenuStrip();
-        menu.Items.Add("Open Control Panel", null, (_, _) => OpenControlPanel());
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Exit", null, (_, _) => Shutdown());
+        // WPF ContextMenu styled by WPF-UI (Fluent Design)
+        var wpfMenu = new System.Windows.Controls.ContextMenu();
+
+        var openItem = new Wpf.Ui.Controls.MenuItem
+        {
+            Header = "Open Control Panel",
+            Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Settings24 },
+        };
+        openItem.Click += (_, _) => OpenControlPanel();
+
+        var exitItem = new Wpf.Ui.Controls.MenuItem
+        {
+            Header = "Exit",
+            Icon = new Wpf.Ui.Controls.SymbolIcon { Symbol = Wpf.Ui.Controls.SymbolRegular.Power24 },
+        };
+        exitItem.Click += (_, _) => Shutdown();
+
+        wpfMenu.Items.Add(openItem);
+        wpfMenu.Items.Add(new System.Windows.Controls.Separator());
+        wpfMenu.Items.Add(exitItem);
 
         _trayIcon = new NotifyIcon
         {
             Icon = LoadIcon(),
             Text = "Vitrine",
             Visible = true,
-            ContextMenuStrip = menu,
+        };
+
+        _trayIcon.MouseClick += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                wpfMenu.IsOpen = true;
+            }
         };
 
         _trayIcon.DoubleClick += (_, _) => OpenControlPanel();
