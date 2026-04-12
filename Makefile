@@ -35,9 +35,13 @@ build-themes:
 		cp "$$dir/src/settings.definitions.json" "$(THEMES_DEST)/$$name/settings.definitions.json" 2>/dev/null || true; \
 	done
 
+installer: release
+	@echo "Building installer (requires Inno Setup on Windows)"
+	iscc installer/vitrine.iss
+
 clean:
 	dotnet clean $(PROJECT) -c Release
 	dotnet clean $(PROJECT) -c Debug
 	rm -rf $(PUBLISH_DIR)
 
-.PHONY: build debug release restore clean build-themes
+.PHONY: build debug release restore clean build-themes installer
