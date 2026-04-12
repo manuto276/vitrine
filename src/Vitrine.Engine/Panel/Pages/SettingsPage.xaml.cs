@@ -14,7 +14,7 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
 {
     private readonly ThemeHost _host;
     private readonly string _themeName;
-    private Dictionary<string, SettingsDefinition>? _definitions;
+    private List<SettingsSection>? _sections;
     private Dictionary<string, JsonElement>? _settings;
     private readonly Dictionary<string, Func<object>> _controls = new();
     private readonly Dictionary<string, UIElement> _cardElements = new();
@@ -44,13 +44,12 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
 
         Log.Info($"Loading settings for theme '{_themeName}'");
 
-        _definitions = JsonSerializer.Deserialize<Dictionary<string, SettingsDefinition>>(
-            File.ReadAllText(defsPath));
+        _sections = JsonSerializer.Deserialize<List<SettingsSection>>(File.ReadAllText(defsPath));
         _settings = File.Exists(settingsPath)
             ? JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(File.ReadAllText(settingsPath))
             : new();
 
-        if (_definitions == null || _definitions.Count == 0)
+        if (_sections == null || _sections.Count == 0)
         {
             EmptyText.Visibility = Visibility.Visible;
             ButtonBar.Visibility = Visibility.Collapsed;
@@ -66,24 +65,22 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
         _controls.Clear();
         _cardElements.Clear();
 
-        // Group by category
-        var grouped = _definitions!
-            .GroupBy(kv => kv.Value.Category.Length > 0 ? kv.Value.Category : "General")
-            .OrderBy(g => g.Key);
+        bool isFirst = true;
 
-        foreach (var group in grouped)
+        foreach (var section in _sections!)
         {
-            // Category header
+            // Section header
             SettingsPanel.Children.Add(new TextBlock
             {
-                Text = group.Key,
+                Text = section.Title,
                 FontSize = 14,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"),
-                Margin = new Thickness(0, SettingsPanel.Children.Count > 0 ? 20 : 0, 0, 8),
+                Margin = new Thickness(0, isFirst ? 0 : 20, 0, 8),
             });
+            isFirst = false;
 
-            foreach (var (key, def) in group)
+            foreach (var (key, def) in section.Settings)
             {
                 var currentValue = _settings!.TryGetValue(key, out var val)
                     ? val
@@ -188,30 +185,33 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
 
     private void UpdateVisibility()
     {
-        if (_definitions == null) return;
+        if (_sections == null) return;
 
-        foreach (var (key, def) in _definitions)
+        foreach (var section in _sections)
         {
-            if (def.VisibleWhen == null || !_cardElements.TryGetValue(key, out var card))
-                continue;
-
-            var conditionKey = def.VisibleWhen.Key;
-            if (!_controls.TryGetValue(conditionKey, out var getter))
-                continue;
-
-            var currentValue = getter();
-            var expectedValue = def.VisibleWhen.Value;
-
-            bool visible = expectedValue.ValueKind switch
+            foreach (var (key, def) in section.Settings)
             {
-                JsonValueKind.True => currentValue is true,
-                JsonValueKind.False => currentValue is false,
-                JsonValueKind.String => currentValue?.ToString() == expectedValue.GetString(),
-                JsonValueKind.Number => currentValue is double d && Math.Abs(d - expectedValue.GetDouble()) < 0.001,
-                _ => true,
-            };
+                if (def.VisibleWhen == null || !_cardElements.TryGetValue(key, out var card))
+                    continue;
 
-            card.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+                var conditionKey = def.VisibleWhen.Key;
+                if (!_controls.TryGetValue(conditionKey, out var getter))
+                    continue;
+
+                var currentValue = getter();
+                var expectedValue = def.VisibleWhen.Value;
+
+                bool visible = expectedValue.ValueKind switch
+                {
+                    JsonValueKind.True => currentValue is true,
+                    JsonValueKind.False => currentValue is false,
+                    JsonValueKind.String => currentValue?.ToString() == expectedValue.GetString(),
+                    JsonValueKind.Number => currentValue is double d && Math.Abs(d - expectedValue.GetDouble()) < 0.001,
+                    _ => true,
+                };
+
+                card.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+            }
         }
     }
 
@@ -242,13 +242,16 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
     private void OnResetClick(object sender, RoutedEventArgs e)
     {
         Log.Info($"Resetting settings to defaults for theme '{_themeName}'");
-        if (_definitions == null) return;
+        if (_sections == null) return;
 
         _settings = new Dictionary<string, JsonElement>();
-        foreach (var (key, def) in _definitions)
+        foreach (var section in _sections)
         {
-            if (def.Default.HasValue)
-                _settings[key] = def.Default.Value;
+            foreach (var (key, def) in section.Settings)
+            {
+                if (def.Default.HasValue)
+                    _settings[key] = def.Default.Value;
+            }
         }
 
         BuildForm();
