@@ -69,7 +69,8 @@ A system tray icon appears. Double-click it or right-click and select **Open Con
 │       └── default/                # Default Conky-style React theme
 ├── docs/                           # Documentation
 │   ├── creating-themes.md          # How to create a theme
-│   └── theme-settings.md           # How to add settings to a theme
+│   ├── theme-settings.md           # How to add settings to a theme
+│   └── system-info-api.md          # System info API reference
 ├── Vitrine.sln
 ├── Makefile
 └── Directory.Build.props           # Redirects bin/obj to .build/
@@ -79,33 +80,7 @@ A system tray icon appears. Double-click it or right-click and select **Open Con
 
 - [Creating Themes](docs/creating-themes.md) — How to build a Vitrine theme from scratch
 - [Theme Settings](docs/theme-settings.md) — How to add configurable settings with definitions
-
-## System Info API
-
-The `window.vitrine.system` API is injected into every theme:
-
-```js
-// Subscribe to periodic updates (every 2s)
-window.vitrine.system.onUpdate((info) => { ... });
-
-// One-shot request
-const info = await window.vitrine.system.getInfo();
-```
-
-The `info` object:
-
-```json
-{
-  "system": { "hostname": "DESKTOP-ABC", "os": "Microsoft Windows 10.0.22631", "uptime": 123456 },
-  "cpu": { "usage": 23.5, "cores": 8 },
-  "memory": { "total": 17179869184, "available": 8589934592, "used": 8589934592, "load": 50 },
-  "battery": { "hasBattery": true, "charging": false, "level": 72, "remainingSeconds": 5400, "powerSource": "battery" },
-  "drives": [{ "name": "C:\\", "label": "OS", "total": 500107862016, "free": 250053931008, "used": 250053931008 }],
-  "processes": [{ "name": "chrome", "pid": 1234, "memory": 524288000 }]
-}
-```
-
-> On desktops without a battery, `battery` returns `{ "hasBattery": false }`.
+- [System Info API](docs/system-info-api.md) — API reference for `window.vitrine.system`
 
 ## Configuration
 
