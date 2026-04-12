@@ -22,6 +22,20 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+# Wine + Inno Setup (for building installer on Linux)
+RUN dpkg --add-architecture i386 \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends wine wine64 xvfb \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /opt/innosetup \
+    && cd /tmp \
+    && wget -q "https://files.jrsoftware.org/is/6/innosetup-6.4.3.exe" -O is-setup.exe \
+    && xvfb-run wine is-setup.exe /VERYSILENT /SUPPRESSMSGBOXES /DIR="C:\\InnoSetup" \
+    && cp -r /root/.wine/drive_c/InnoSetup/* /opt/innosetup/ \
+    && rm -f is-setup.exe \
+    && rm -rf /tmp/.wine*
+
 ENV DOTNET_ROOT=/usr/local/dotnet
 ENV PATH="$PATH:/usr/local/dotnet"
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1

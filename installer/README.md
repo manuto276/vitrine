@@ -4,9 +4,10 @@ The Vitrine installer is built with [Inno Setup](https://jrsoftware.org/isinfo.p
 
 ## Prerequisites
 
-- Inno Setup 6.x installed on Windows
-- `iscc` (Inno Setup Compiler) available in PATH
 - A release build already produced (`make release`)
+- One of:
+  - **Devcontainer**: Wine + Inno Setup are pre-installed (rebuild container if missing)
+  - **Windows**: [Inno Setup 6.x](https://jrsoftware.org/isinfo.php) with `iscc` in PATH
 
 ## Build
 
@@ -15,12 +16,9 @@ The Vitrine installer is built with [Inno Setup](https://jrsoftware.org/isinfo.p
 make installer
 ```
 
-Or manually:
-
-```bash
-make release
-iscc installer/vitrine.iss
-```
+The build script (`installer/build.sh`) auto-detects the environment:
+- **Linux/devcontainer**: uses Wine to run ISCC.exe
+- **Windows**: uses native `iscc`
 
 Output: `publish/installer/VitrineSetup-1.0.0.exe`
 
