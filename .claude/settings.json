@@ -28,7 +28,9 @@
       "Bash(dotnet restore:*)",
       "Bash(dotnet publish:*)",
       "Bash(dotnet clean:*)",
-      "Bash(bash)"
+      "Bash(bash)",
+      "Bash(dotnet /usr/local/dotnet/sdk/9.0.312/Sdks/Microsoft.NET.Sdk/tools/net9.0/DotNet.Xunit.dll)",
+      "Bash(dotnet script:*)"
     ],
     "defaultMode": "acceptEdits"
   }
