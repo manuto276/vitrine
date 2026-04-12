@@ -21,6 +21,12 @@ internal partial class ControlPanelWindow : FluentWindow
         Log.Info("Control Panel opening");
         InitializeComponent();
 
+        // Window-level input diagnostics
+        this.PreviewKeyDown += (_, e) =>
+            Log.Info($"Window PreviewKeyDown: key={e.Key}, source={e.OriginalSource?.GetType().Name}, handled={e.Handled}");
+        this.PreviewTextInput += (_, e) =>
+            Log.Info($"Window PreviewTextInput: text='{e.Text}', source={e.OriginalSource?.GetType().Name}, handled={e.Handled}");
+
         _pageService = new PageService();
         _pageService.Register(() => _homePage ??= new HomePage(_host, this));
         _pageService.Register(() => _themesPage ??= new ThemesPage(_host, this));
