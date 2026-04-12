@@ -45,6 +45,7 @@ A system tray icon appears. Double-click it or right-click and select **Open Con
 | `make debug` | Publish with logging enabled to `publish/debug/` |
 | `make build-themes` | Compile all React themes in `src/themes/` |
 | `make restore` | Restore NuGet packages |
+| `make installer` | Build Windows installer (NSIS) to `publish/installer/` |
 | `make clean` | Clean all build artifacts and publish output |
 
 ## Project Structure
@@ -73,6 +74,9 @@ A system tray icon appears. Double-click it or right-click and select **Open Con
 │   ├── creating-themes.md          # How to create a theme
 │   ├── theme-settings.md           # How to add settings to a theme
 │   └── system-info-api.md          # System info API reference
+├── installer/
+│   ├── vitrine.nsi                 # NSIS installer script
+│   └── build.sh                    # Build script (runs makensis)
 ├── Vitrine.sln
 ├── Makefile
 └── Directory.Build.props           # Redirects bin/obj to .build/
@@ -103,6 +107,25 @@ The Control Panel is a native WPF window using Fluent Design (WPF-UI) that match
 - **About** — Version and license
 
 Open it by double-clicking the tray icon or via right-click menu.
+
+## Installer
+
+The project includes an NSIS-based Windows installer that can be built natively from the Linux devcontainer (no Wine required).
+
+```bash
+make installer
+```
+
+This produces `publish/installer/VitrineSetup-<version>.exe`, a per-user installer (no admin required) that:
+
+- Installs to `%LOCALAPPDATA%\Programs\Vitrine`
+- Creates Start Menu shortcuts
+- Optionally creates a desktop shortcut
+- Optionally registers auto-start with Windows
+- Adds an entry in Windows Add/Remove Programs
+- Includes an uninstaller with the option to preserve user data
+
+The devcontainer already includes NSIS. On other Linux systems, install it with `sudo apt install nsis`.
 
 ## Debugging
 
