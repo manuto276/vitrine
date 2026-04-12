@@ -19,6 +19,8 @@ internal partial class ControlPanelWindow : FluentWindow
         Log.Info("Control Panel opening");
         InitializeComponent();
 
+        SetupNavigation();
+
         Loaded += (_, _) =>
         {
             _loaded = true;
@@ -29,10 +31,33 @@ internal partial class ControlPanelWindow : FluentWindow
 
     private bool _loaded;
 
-    private void OnNavChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    private void SetupNavigation()
+    {
+        NavView.MenuItems.Add(new NavigationViewItem
+        {
+            Content = "Home",
+            Tag = "home",
+            Icon = new SymbolIcon { Symbol = SymbolRegular.Home24 },
+        });
+        NavView.MenuItems.Add(new NavigationViewItem
+        {
+            Content = "Themes",
+            Tag = "themes",
+            Icon = new SymbolIcon { Symbol = SymbolRegular.Color24 },
+        });
+
+        NavView.FooterMenuItems.Add(new NavigationViewItem
+        {
+            Content = "About",
+            Tag = "about",
+            Icon = new SymbolIcon { Symbol = SymbolRegular.Info24 },
+        });
+    }
+
+    private void OnNavChanged(NavigationView sender, RoutedEventArgs e)
     {
         if (!_loaded) return;
-        if (NavList.SelectedItem is System.Windows.Controls.ListBoxItem item)
+        if (NavView.SelectedItem is NavigationViewItem item)
             NavigateTo(item.Tag?.ToString() ?? "home");
     }
 
