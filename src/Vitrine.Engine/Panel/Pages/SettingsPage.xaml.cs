@@ -222,6 +222,19 @@ internal partial class SettingsPage : System.Windows.Controls.Page
             MinWidth = 200,
         };
 
+        // Force keyboard focus on click — WPF-UI FluentWindow/NavigationView can
+        // absorb keyboard focus, leaving only logical focus on the TextBox
+        // (which makes Ctrl+V work but blocks typing)
+        textBox.PreviewMouseLeftButtonDown += (s, e) =>
+        {
+            if (!textBox.IsKeyboardFocusWithin)
+            {
+                e.Handled = true;
+                textBox.Focus();
+                System.Windows.Input.Keyboard.Focus(textBox);
+            }
+        };
+
         Regex? regex = null;
         if (!string.IsNullOrEmpty(def.Pattern))
         {
