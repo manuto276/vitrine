@@ -15,6 +15,7 @@ namespace Vitrine.Engine.Core;
 internal class ThemeHost : IDisposable
 {
     private ThemeWindow? _window;
+    private ControlPanel? _controlPanel;
     private NotifyIcon? _trayIcon;
     private ToolStripMenuItem? _themesMenu;
     private readonly SystemInfoProvider _systemInfo = new();
@@ -194,13 +195,27 @@ internal class ThemeHost : IDisposable
         _window?.LoadTheme(themePath, manifest.Entry);
     }
 
-    private void SwitchTheme(string themeName)
+    internal void SetActiveTheme(string themeName)
     {
         Log.Info($"Switching theme to '{themeName}'");
         _config.ActiveTheme = themeName;
         _config.Save();
         LoadActiveTheme();
         UpdateThemeMenuChecks();
+    }
+
+    internal void ReloadActiveTheme() => LoadActiveTheme();
+
+    private void OpenControlPanel()
+    {
+        if (_controlPanel != null && !_controlPanel.IsDisposed)
+        {
+            _controlPanel.Activate();
+            return;
+        }
+
+        _controlPanel = new ControlPanel(this);
+        _controlPanel.Show();
     }
 
     private void SetupTrayIcon()
@@ -213,6 +228,8 @@ internal class ThemeHost : IDisposable
         menu.Items.Add(_themesMenu);
 
         menu.Items.Add("Reload Theme", null, (_, _) => LoadActiveTheme());
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add("Control Panel", null, (_, _) => OpenControlPanel());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => Shutdown());
 
@@ -253,7 +270,7 @@ internal class ThemeHost : IDisposable
                 Tag = name,
                 Checked = name == _config.ActiveTheme,
             };
-            item.Click += (_, _) => SwitchTheme(name);
+            item.Click += (_, _) => SetActiveTheme(name);
             _themesMenu.DropDownItems.Add(item);
         }
     }
