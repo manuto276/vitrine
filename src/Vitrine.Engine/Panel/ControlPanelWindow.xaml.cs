@@ -20,11 +20,18 @@ internal partial class ControlPanelWindow : FluentWindow
         _host = host;
         InitializeComponent();
 
-        Loaded += (_, _) => NavigateTo("home");
+        Loaded += (_, _) =>
+        {
+            _loaded = true;
+            NavigateTo("home");
+        };
     }
+
+    private bool _loaded;
 
     private void OnNavChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
+        if (!_loaded) return;
         if (NavList.SelectedItem is System.Windows.Controls.ListBoxItem item)
             NavigateTo(item.Tag?.ToString() ?? "home");
     }

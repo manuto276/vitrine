@@ -159,7 +159,7 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
             MinWidth = 200,
         };
         textBox.TextChanged += (_, _) => MarkDirty();
-        _controls[key] = () => textBox.Text;
+        _controls[key] = () => textBox.Text ?? "";
         return textBox;
     }
 
