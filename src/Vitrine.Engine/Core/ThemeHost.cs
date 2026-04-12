@@ -18,7 +18,6 @@ internal class ThemeHost : IDisposable
     private ThemeWindow? _window;
     private ControlPanelWindow? _controlPanel;
     private NotifyIcon? _trayIcon;
-    private ToolStripMenuItem? _themesMenu;
     private readonly SystemInfoProvider _systemInfo = new();
     private Configuration _config = null!;
 
@@ -202,7 +201,6 @@ internal class ThemeHost : IDisposable
         _config.ActiveTheme = themeName;
         _config.Save();
         LoadActiveTheme();
-        UpdateThemeMenuChecks();
     }
 
     internal void ReloadActiveTheme() => LoadActiveTheme();
@@ -256,15 +254,7 @@ internal class ThemeHost : IDisposable
     private void SetupTrayIcon()
     {
         var menu = new ContextMenuStrip();
-        menu.Opening += (_, _) => RefreshThemeList();
-
-        _themesMenu = new ToolStripMenuItem("Themes");
-        RefreshThemeList();
-        menu.Items.Add(_themesMenu);
-
-        menu.Items.Add("Reload Theme", null, (_, _) => LoadActiveTheme());
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Control Panel", null, (_, _) => OpenControlPanel());
+        menu.Items.Add("Open Control Panel", null, (_, _) => OpenControlPanel());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => Shutdown());
 
@@ -275,46 +265,8 @@ internal class ThemeHost : IDisposable
             Visible = true,
             ContextMenuStrip = menu,
         };
-    }
 
-    private void RefreshThemeList()
-    {
-        if (_themesMenu == null) return;
-        _themesMenu.DropDownItems.Clear();
-
-        var themesPath = Configuration.ThemesPath;
-        if (!Directory.Exists(themesPath)) return;
-
-        foreach (var themeDir in Directory.GetDirectories(themesPath).OrderBy(d => d))
-        {
-            var manifestPath = Path.Combine(themeDir, "theme.json");
-            if (!File.Exists(manifestPath)) continue;
-
-            var name = Path.GetFileName(themeDir);
-            string displayName = name;
-
-            try
-            {
-                var manifest = JsonSerializer.Deserialize<ThemeManifest>(File.ReadAllText(manifestPath));
-                if (manifest?.Name is { Length: > 0 } n) displayName = n;
-            }
-            catch { /* use folder name */ }
-
-            var item = new ToolStripMenuItem(displayName)
-            {
-                Tag = name,
-                Checked = name == _config.ActiveTheme,
-            };
-            item.Click += (_, _) => SetActiveTheme(name);
-            _themesMenu.DropDownItems.Add(item);
-        }
-    }
-
-    private void UpdateThemeMenuChecks()
-    {
-        if (_themesMenu == null) return;
-        foreach (ToolStripMenuItem item in _themesMenu.DropDownItems)
-            item.Checked = (string?)item.Tag == _config.ActiveTheme;
+        _trayIcon.DoubleClick += (_, _) => OpenControlPanel();
     }
 
     private void OnThemeMessage(object? sender, string messageJson)
