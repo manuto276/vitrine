@@ -104,7 +104,10 @@ An **array of sections**, where each section groups related settings:
 | `label` | string | No | Display name (falls back to the key) |
 | `description` | string | No | Help text shown below the label |
 | `options` | array | No | List of allowed values (renders as dropdown) |
+| `pattern` | string | No | Regex the value must match (string text inputs only) |
+| `patternMessage` | string | No | Error tooltip shown when `pattern` does not match |
 | `visibleWhen` | object | No | Conditional visibility |
+| `disabledWhen` | object | No | Conditional disabled state (greys out the control) |
 
 ### Options
 
@@ -118,6 +121,23 @@ When `options` is present, the Control Panel renders a dropdown instead of a fre
 ```
 
 Works with both `"string"` and `"number"` types.
+
+### Pattern Validation
+
+Free-form `"string"` inputs (no `options`) can be constrained with a .NET-flavored regular expression:
+
+```json
+"accentColor": {
+  "type": "string",
+  "default": "#5b8def",
+  "label": "Accent Color",
+  "description": "Hex color used for highlights",
+  "pattern": "^#[0-9a-fA-F]{6}$",
+  "patternMessage": "Must be a 6-digit hex color, e.g. #5b8def"
+}
+```
+
+While the value does not match `pattern`, the input shows a red border with `patternMessage` (or a default message) as a tooltip and **Save & Apply** is disabled until every field is valid. `pattern` is ignored on `boolean`, `number`, and any field that uses `options`.
 
 ### Conditional Visibility (visibleWhen)
 
@@ -141,6 +161,26 @@ Supports:
 - **number**: exact match
 
 The UI updates immediately when the controlling setting changes — no save required.
+
+### Conditional Disabled State (disabledWhen)
+
+Same shape as `visibleWhen`, but instead of hiding the setting it greys it out and blocks interaction. Use this when you want users to *see* a setting that does not currently apply (so they understand why it is unavailable) rather than hide it entirely:
+
+```json
+"processCount": {
+  "type": "number",
+  "default": 5,
+  "label": "Process Count",
+  "disabledWhen": { "key": "showProcessesList", "value": false }
+}
+```
+
+| Field | Description |
+|---|---|
+| `key` | The setting key to observe |
+| `value` | The value that makes this setting disabled |
+
+Supports the same value types as `visibleWhen` (boolean, string, number). `visibleWhen` and `disabledWhen` can be combined on the same setting.
 
 ## Control Mapping
 
