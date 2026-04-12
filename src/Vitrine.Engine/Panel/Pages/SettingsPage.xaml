@@ -7,6 +7,13 @@
 
     <StackPanel Margin="36,24,36,24">
 
+        <ui:Button Appearance="Secondary" Click="OnBackClick" Margin="0,0,0,16" Padding="8,4">
+            <StackPanel Orientation="Horizontal">
+                <ui:SymbolIcon Symbol="ArrowLeft24" Margin="0,0,8,0" />
+                <TextBlock Text="Back to Themes" VerticalAlignment="Center" />
+            </StackPanel>
+        </ui:Button>
+
         <TextBlock Text="Theme Settings" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,4" />
         <TextBlock x:Name="SubtitleText"
                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12"

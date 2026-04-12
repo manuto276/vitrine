@@ -27,7 +27,7 @@ internal partial class ControlPanelWindow : FluentWindow
         _pageService.Register(() =>
         {
             // SettingsPage is always created fresh with the pending theme id
-            return new SettingsPage(_host, _pendingSettingsTheme);
+            return new SettingsPage(_host, _pendingSettingsTheme, this);
         });
         _pageService.Register(() => _aboutPage ??= new AboutPage());
 

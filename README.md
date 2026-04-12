@@ -1,5 +1,7 @@
 # Vitrine
 
+[![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-blue?style=for-the-badge&logo=paypal)](https://paypal.me/manuto08)
+
 A themeable desktop widget engine for Windows, inspired by [Conky](https://github.com/brndnmtthws/conky).
 
 Vitrine renders a full-screen transparent overlay behind your desktop icons using WebView2, and loads themes built with React that display system information, custom widgets, or anything you can build with HTML/CSS/JS.

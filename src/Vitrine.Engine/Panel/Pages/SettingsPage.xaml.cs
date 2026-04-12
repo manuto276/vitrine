@@ -13,15 +13,17 @@ namespace Vitrine.Engine.Panel.Pages;
 internal partial class SettingsPage : System.Windows.Controls.Page
 {
     private readonly ThemeHost _host;
+    private readonly ControlPanelWindow? _window;
     private readonly string _themeName;
     private List<SettingsSection>? _sections;
     private Dictionary<string, JsonElement>? _settings;
     private readonly Dictionary<string, Func<object>> _controls = new();
     private readonly Dictionary<string, UIElement> _cardElements = new();
 
-    public SettingsPage(ThemeHost host, string? themeName = null)
+    public SettingsPage(ThemeHost host, string? themeName = null, ControlPanelWindow? window = null)
     {
         _host = host;
+        _window = window;
         _themeName = themeName ?? Configuration.Load().ActiveTheme;
         InitializeComponent();
         SubtitleText.Text = $"Configure \"{_themeName}\" theme";
@@ -223,6 +225,11 @@ internal partial class SettingsPage : System.Windows.Controls.Page
                 card.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
             }
         }
+    }
+
+    private void OnBackClick(object sender, RoutedEventArgs e)
+    {
+        _window?.RootNavigation.Navigate(typeof(ThemesPage));
     }
 
     private void MarkDirty()
