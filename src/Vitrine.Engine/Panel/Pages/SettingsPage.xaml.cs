@@ -103,6 +103,7 @@ internal partial class SettingsPage : System.Windows.Controls.Page
                 {
                     Text = def.Label.Length > 0 ? def.Label : key,
                     FontWeight = FontWeights.SemiBold,
+                    Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorPrimaryBrush"),
                 });
                 if (def.Description.Length > 0)
                 {

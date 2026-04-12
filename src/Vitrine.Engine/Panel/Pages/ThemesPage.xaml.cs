@@ -120,6 +120,7 @@ internal partial class ThemesPage : System.Windows.Controls.Page
             Text = manifest.Name.Length > 0 ? manifest.Name : id,
             FontWeight = FontWeights.SemiBold,
             FontSize = 14,
+            Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorPrimaryBrush"),
         });
 
         if (isActive)
