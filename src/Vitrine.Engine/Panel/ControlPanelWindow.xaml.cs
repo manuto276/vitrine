@@ -32,7 +32,7 @@ internal partial class ControlPanelWindow : FluentWindow
     private void OnNavChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!_loaded) return;
-        if (NavList.SelectedItem is Wpf.Ui.Controls.ListViewItem item)
+        if (NavList.SelectedItem is System.Windows.Controls.ListBoxItem item)
             NavigateTo(item.Tag?.ToString() ?? "home");
     }
 
