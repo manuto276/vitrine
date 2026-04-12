@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     libicu74 liblttng-ust1 libssl3 \
     libstdc++6 zlib1g \
     procps htop sudo \
+    nsis \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh \

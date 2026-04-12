@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
+using Microsoft.Win32;
 
 namespace Vitrine.Engine.Core;
 
@@ -30,6 +31,25 @@ internal class ThemeWindow : Form
 
         _webView = new WebView2 { Dock = DockStyle.Fill };
         Controls.Add(_webView);
+
+        SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+    }
+
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        var primary = Screen.PrimaryScreen!.Bounds;
+        if (Bounds != primary)
+        {
+            Log.Info($"Display settings changed — repositioning to primary monitor: {primary}");
+            Bounds = primary;
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+            SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        base.Dispose(disposing);
     }
 
     protected override CreateParams CreateParams
