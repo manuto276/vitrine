@@ -1,0 +1,65 @@
+<ui:FluentWindow
+    x:Class="Vitrine.Engine.Panel.ControlPanelWindow"
+    x:ClassModifier="internal"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    Title="Vitrine"
+    Width="960" Height="640"
+    MinWidth="720" MinHeight="480"
+    WindowStartupLocation="CenterScreen"
+    ExtendsContentIntoTitleBar="True"
+    WindowBackdropType="Mica">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Navigation -->
+        <Border Grid.Column="0" BorderThickness="0,0,1,0"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+            <DockPanel Margin="8,48,8,8">
+                <TextBlock Text="Vitrine" FontSize="16" FontWeight="SemiBold"
+                           DockPanel.Dock="Top" Margin="12,4,0,16" />
+                <ListBox x:Name="NavList" Background="Transparent" BorderThickness="0"
+                         SelectionChanged="OnNavChanged">
+                    <ListBoxItem Tag="home" IsSelected="True">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Home24" Margin="0,0,12,0" />
+                            <TextBlock Text="Home" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Tag="themes">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Color24" Margin="0,0,12,0" />
+                            <TextBlock Text="Themes" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Tag="settings">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Settings24" Margin="0,0,12,0" />
+                            <TextBlock Text="Settings" />
+                        </StackPanel>
+                    </ListBoxItem>
+                    <ListBoxItem Tag="about">
+                        <StackPanel Orientation="Horizontal">
+                            <ui:SymbolIcon Symbol="Info24" Margin="0,0,12,0" />
+                            <TextBlock Text="About" />
+                        </StackPanel>
+                    </ListBoxItem>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="0,48,0,0">
+            <ContentPresenter x:Name="PageContent" Margin="0,0,0,24" />
+        </ScrollViewer>
+
+        <!-- Title bar -->
+        <ui:TitleBar Grid.ColumnSpan="2" Title="Vitrine" ShowMaximize="True" ShowMinimize="True" />
+    </Grid>
+
+</ui:FluentWindow>

@@ -4,19 +4,16 @@ RID := win-x64
 THEMES_SRC := src/themes
 THEMES_DEST := $(PROJECT)/Assets/themes
 
-PANEL_SRC := src/panel
-PANEL_DEST := $(PROJECT)/Assets/panel
-
-build: build-themes build-panel
+build: build-themes
 	dotnet build $(PROJECT) -c Release
 
-debug: build-themes build-panel
+debug: build-themes
 	dotnet publish $(PROJECT) -c Debug -r $(RID) \
 		--self-contained true \
 		-p:PublishSingleFile=true \
 		-o $(PUBLISH_DIR)/debug
 
-release: build-themes build-panel
+release: build-themes
 	dotnet publish $(PROJECT) -c Release -r $(RID) \
 		--self-contained true \
 		-p:PublishSingleFile=true \
@@ -43,11 +40,4 @@ clean:
 	dotnet clean $(PROJECT) -c Debug
 	rm -rf $(PUBLISH_DIR)
 
-build-panel:
-	@echo "Building control panel"
-	@cd $(PANEL_SRC) && npm install --silent && npm run build --silent
-	@mkdir -p $(PANEL_DEST)
-	@cp $(PANEL_SRC)/dist/panel.js $(PANEL_DEST)/panel.js
-	@cp $(PANEL_SRC)/dist/panel.css $(PANEL_DEST)/panel.css 2>/dev/null || true
-
-.PHONY: build debug release restore clean build-themes build-panel
+.PHONY: build debug release restore clean build-themes

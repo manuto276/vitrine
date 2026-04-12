@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
+using Vitrine.Engine.Panel;
 using Vitrine.Engine.SystemInfo;
 using Vitrine.Engine.Themes;
 
@@ -15,7 +16,7 @@ namespace Vitrine.Engine.Core;
 internal class ThemeHost : IDisposable
 {
     private ThemeWindow? _window;
-    private ControlPanel? _controlPanel;
+    private ControlPanelWindow? _controlPanel;
     private NotifyIcon? _trayIcon;
     private ToolStripMenuItem? _themesMenu;
     private readonly SystemInfoProvider _systemInfo = new();
@@ -208,13 +209,23 @@ internal class ThemeHost : IDisposable
 
     private void OpenControlPanel()
     {
-        if (_controlPanel != null && !_controlPanel.IsDisposed)
+        if (_controlPanel != null && _controlPanel.IsVisible)
         {
             _controlPanel.Activate();
             return;
         }
 
-        _controlPanel = new ControlPanel(this);
+        // Initialize WPF Application if not already done (needed for WPF-UI resources)
+        if (System.Windows.Application.Current == null)
+        {
+            new System.Windows.Application
+            {
+                ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown
+            };
+            Wpf.Ui.Appearance.ApplicationThemeManager.Apply(Wpf.Ui.Appearance.ApplicationTheme.Light);
+        }
+
+        _controlPanel = new ControlPanelWindow(this);
         _controlPanel.Show();
     }
 

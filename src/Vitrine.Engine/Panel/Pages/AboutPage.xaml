@@ -1,0 +1,59 @@
+<UserControl
+    x:Class="Vitrine.Engine.Panel.Pages.AboutPage"
+    x:ClassModifier="internal"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
+
+    <StackPanel Margin="24,0">
+
+        <TextBlock Text="About" FontSize="28" FontWeight="SemiBold" Margin="0,0,0,24" />
+
+        <ui:CardControl Margin="0,0,0,16">
+            <ui:CardControl.Header>
+                <StackPanel>
+                    <TextBlock Text="Vitrine" FontSize="24" FontWeight="Bold" />
+                    <TextBlock Text="Desktop widget engine for Windows"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" />
+                </StackPanel>
+            </ui:CardControl.Header>
+        </ui:CardControl>
+
+        <TextBlock Text="Details" FontSize="14" FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                   Margin="0,8,0,8" />
+
+        <ui:CardControl Margin="0,0,0,4">
+            <ui:CardControl.Header>
+                <TextBlock Text="Runtime" FontWeight="SemiBold" />
+            </ui:CardControl.Header>
+            <TextBlock Text=".NET 9 + WebView2"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        </ui:CardControl>
+
+        <ui:CardControl Margin="0,0,0,4">
+            <ui:CardControl.Header>
+                <TextBlock Text="Theme Engine" FontWeight="SemiBold" />
+            </ui:CardControl.Header>
+            <TextBlock Text="React 18 (IIFE)"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        </ui:CardControl>
+
+        <ui:CardControl Margin="0,0,0,4">
+            <ui:CardControl.Header>
+                <TextBlock Text="UI Framework" FontWeight="SemiBold" />
+            </ui:CardControl.Header>
+            <TextBlock Text="WPF + WPF-UI (Fluent Design)"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        </ui:CardControl>
+
+        <ui:CardControl Margin="0,0,0,4">
+            <ui:CardControl.Header>
+                <TextBlock Text="License" FontWeight="SemiBold" />
+            </ui:CardControl.Header>
+            <TextBlock Text="MIT"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+        </ui:CardControl>
+
+    </StackPanel>
+</UserControl>
