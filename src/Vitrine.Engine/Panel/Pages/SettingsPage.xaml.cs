@@ -33,13 +33,6 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
         _themeName = themeName ?? Configuration.Load().ActiveTheme;
         InitializeComponent();
         SubtitleText.Text = $"Configure \"{_themeName}\" theme";
-
-        // Page-level input diagnostics
-        this.PreviewKeyDown += (_, e) =>
-            Log.Info($"Page PreviewKeyDown: key={e.Key}, source={e.OriginalSource?.GetType().Name}, handled={e.Handled}");
-        this.PreviewTextInput += (_, e) =>
-            Log.Info($"Page PreviewTextInput: text='{e.Text}', source={e.OriginalSource?.GetType().Name}, handled={e.Handled}");
-
         LoadSettings();
     }
 
@@ -229,20 +222,6 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
             MinWidth = 200,
         };
 
-        // Ensure InputMethod is enabled (can be disabled by ancestor in certain hosting contexts)
-        System.Windows.Input.InputMethod.SetIsInputMethodEnabled(textBox, true);
-
-        // Diagnostic logging (only in debug builds via Log.Info [Conditional])
-        textBox.PreviewKeyDown += (_, e) =>
-            Log.Info($"TextBox[{key}] PreviewKeyDown: key={e.Key}, system={e.SystemKey}, handled={e.Handled}");
-        textBox.PreviewTextInput += (_, e) =>
-            Log.Info($"TextBox[{key}] PreviewTextInput: text='{e.Text}', handled={e.Handled}");
-        textBox.TextInput += (_, e) =>
-            Log.Info($"TextBox[{key}] TextInput: text='{e.Text}', handled={e.Handled}");
-        textBox.GotKeyboardFocus += (_, _) =>
-            Log.Info($"TextBox[{key}] GotKeyboardFocus — IsKeyboardFocused={textBox.IsKeyboardFocused}");
-        textBox.LostKeyboardFocus += (_, _) =>
-            Log.Info($"TextBox[{key}] LostKeyboardFocus");
 
         Regex? regex = null;
         if (!string.IsNullOrEmpty(def.Pattern))
