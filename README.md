@@ -4,6 +4,8 @@ A themeable desktop widget engine for Windows, inspired by [Conky](https://githu
 
 Vitrine renders a full-screen transparent overlay behind your desktop icons using WebView2, and loads themes built with React that display system information, custom widgets, or anything you can build with HTML/CSS/JS.
 
+![Vitrine Preview](.github/assets/preview.png)
+
 ## Features
 
 - Full-screen transparent overlay embedded behind desktop icons
