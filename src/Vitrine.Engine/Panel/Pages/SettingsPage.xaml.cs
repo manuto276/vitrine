@@ -112,7 +112,6 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
                         FontSize = 12,
                         Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"),
                         TextWrapping = TextWrapping.Wrap,
-                        MaxWidth = 400,
                     });
                 }
                 card.Header = header;
