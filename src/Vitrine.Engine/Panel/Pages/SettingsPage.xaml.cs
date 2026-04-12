@@ -17,6 +17,7 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
     private Dictionary<string, SettingsDefinition>? _definitions;
     private Dictionary<string, JsonElement>? _settings;
     private readonly Dictionary<string, Func<object>> _controls = new();
+    private readonly Dictionary<string, UIElement> _cardElements = new();
 
     public SettingsPage(ThemeHost host, string? themeName = null)
     {
@@ -63,39 +64,59 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
     {
         SettingsPanel.Children.Clear();
         _controls.Clear();
+        _cardElements.Clear();
 
-        foreach (var (key, def) in _definitions!)
+        // Group by category
+        var grouped = _definitions!
+            .GroupBy(kv => kv.Value.Category.Length > 0 ? kv.Value.Category : "General")
+            .OrderBy(g => g.Key);
+
+        foreach (var group in grouped)
         {
-            var currentValue = _settings!.TryGetValue(key, out var val)
-                ? val
-                : (def.Default.HasValue ? def.Default.Value : default);
-
-            var card = new Wpf.Ui.Controls.CardControl { Margin = new Thickness(0, 0, 0, 4) };
-
-            var header = new StackPanel();
-            header.Children.Add(new TextBlock
+            // Category header
+            SettingsPanel.Children.Add(new TextBlock
             {
-                Text = def.Label.Length > 0 ? def.Label : key,
+                Text = group.Key,
+                FontSize = 14,
                 FontWeight = FontWeights.SemiBold,
+                Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"),
+                Margin = new Thickness(0, SettingsPanel.Children.Count > 0 ? 20 : 0, 0, 8),
             });
-            if (def.Description.Length > 0)
+
+            foreach (var (key, def) in group)
             {
+                var currentValue = _settings!.TryGetValue(key, out var val)
+                    ? val
+                    : (def.Default.HasValue ? def.Default.Value : default);
+
+                var card = new Wpf.Ui.Controls.CardControl { Margin = new Thickness(0, 0, 0, 4) };
+
+                var header = new StackPanel();
                 header.Children.Add(new TextBlock
                 {
-                    Text = def.Description,
-                    FontSize = 12,
-                    Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"),
-                    TextWrapping = TextWrapping.Wrap,
-                    MaxWidth = 400,
+                    Text = def.Label.Length > 0 ? def.Label : key,
+                    FontWeight = FontWeights.SemiBold,
                 });
+                if (def.Description.Length > 0)
+                {
+                    header.Children.Add(new TextBlock
+                    {
+                        Text = def.Description,
+                        FontSize = 12,
+                        Foreground = (System.Windows.Media.Brush)FindResource("TextFillColorSecondaryBrush"),
+                        TextWrapping = TextWrapping.Wrap,
+                        MaxWidth = 400,
+                    });
+                }
+                card.Header = header;
+                card.Content = CreateControl(key, def, currentValue);
+
+                _cardElements[key] = card;
+                SettingsPanel.Children.Add(card);
             }
-            card.Header = header;
-
-            var control = CreateControl(key, def, currentValue);
-            card.Content = control;
-
-            SettingsPanel.Children.Add(card);
         }
+
+        UpdateVisibility();
     }
 
     private UIElement CreateControl(string key, SettingsDefinition def, JsonElement value)
@@ -106,7 +127,7 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
             {
                 IsChecked = value.ValueKind == JsonValueKind.True,
             };
-            toggle.Click += (_, _) => MarkDirty();
+            toggle.Click += (_, _) => { MarkDirty(); UpdateVisibility(); };
             _controls[key] = () => toggle.IsChecked == true;
             return toggle;
         }
@@ -127,7 +148,7 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
                 }
             }
 
-            combo.SelectionChanged += (_, _) => MarkDirty();
+            combo.SelectionChanged += (_, _) => { MarkDirty(); UpdateVisibility(); };
             _controls[key] = () =>
             {
                 if (combo.SelectedItem is System.Windows.Controls.ComboBoxItem ci)
@@ -155,7 +176,6 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
             return numBox;
         }
 
-        // Default: text input
         var textBox = new System.Windows.Controls.TextBox
         {
             Text = value.ValueKind == JsonValueKind.String ? value.GetString() : value.ToString(),
@@ -164,6 +184,35 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
         textBox.TextChanged += (_, _) => MarkDirty();
         _controls[key] = () => textBox.Text ?? "";
         return textBox;
+    }
+
+    private void UpdateVisibility()
+    {
+        if (_definitions == null) return;
+
+        foreach (var (key, def) in _definitions)
+        {
+            if (def.VisibleWhen == null || !_cardElements.TryGetValue(key, out var card))
+                continue;
+
+            var conditionKey = def.VisibleWhen.Key;
+            if (!_controls.TryGetValue(conditionKey, out var getter))
+                continue;
+
+            var currentValue = getter();
+            var expectedValue = def.VisibleWhen.Value;
+
+            bool visible = expectedValue.ValueKind switch
+            {
+                JsonValueKind.True => currentValue is true,
+                JsonValueKind.False => currentValue is false,
+                JsonValueKind.String => currentValue?.ToString() == expectedValue.GetString(),
+                JsonValueKind.Number => currentValue is double d && Math.Abs(d - expectedValue.GetDouble()) < 0.001,
+                _ => true,
+            };
+
+            card.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
     private void MarkDirty()
@@ -195,7 +244,6 @@ internal partial class SettingsPage : System.Windows.Controls.UserControl
         Log.Info($"Resetting settings to defaults for theme '{_themeName}'");
         if (_definitions == null) return;
 
-        // Rebuild with defaults
         _settings = new Dictionary<string, JsonElement>();
         foreach (var (key, def) in _definitions)
         {

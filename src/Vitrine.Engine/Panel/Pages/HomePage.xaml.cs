@@ -31,6 +31,7 @@ internal partial class HomePage : System.Windows.Controls.UserControl
 
     private void OnSettingsClick(object sender, RoutedEventArgs e)
     {
-        _window.NavigateTo("settings");
+        var config = Configuration.Load();
+        _window.NavigateTo("settings", config.ActiveTheme);
     }
 }

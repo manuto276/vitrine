@@ -18,6 +18,12 @@ internal class SettingsDefinition
     [JsonPropertyName("description")]
     public string Description { get; set; } = "";
 
+    [JsonPropertyName("category")]
+    public string Category { get; set; } = "";
+
+    [JsonPropertyName("visibleWhen")]
+    public VisibilityCondition? VisibleWhen { get; set; }
+
     [JsonPropertyName("options")]
     public List<SettingsOption>? Options { get; set; }
 }
@@ -29,4 +35,13 @@ internal class SettingsOption
 
     [JsonPropertyName("label")]
     public string Label { get; set; } = "";
+}
+
+internal class VisibilityCondition
+{
+    [JsonPropertyName("key")]
+    public string Key { get; set; } = "";
+
+    [JsonPropertyName("value")]
+    public JsonElement Value { get; set; }
 }

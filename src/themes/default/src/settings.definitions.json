@@ -1,32 +1,10 @@
 {
-  "showProcessesList": {
-    "type": "boolean",
-    "default": true,
-    "label": "Show Processes",
-    "description": "Display the top processes section with name, PID, and memory usage"
-  },
-  "showStorageSection": {
-    "type": "boolean",
-    "default": true,
-    "label": "Show Storage",
-    "description": "Display the storage/drives section"
-  },
-  "processCount": {
-    "type": "number",
-    "default": 5,
-    "label": "Process Count",
-    "description": "Number of top processes to display",
-    "options": [
-      { "value": 3, "label": "3" },
-      { "value": 5, "label": "5" },
-      { "value": 10, "label": "10" }
-    ]
-  },
   "panelPosition": {
     "type": "string",
     "default": "top-right",
     "label": "Panel Position",
     "description": "Where to place the panel on screen",
+    "category": "Appearance",
     "options": [
       { "value": "top-left", "label": "Top Left" },
       { "value": "top-right", "label": "Top Right" },
@@ -38,6 +16,34 @@
     "type": "number",
     "default": 0.78,
     "label": "Panel Opacity",
-    "description": "Background opacity of the panel (0.0 to 1.0)"
+    "description": "Background opacity of the panel (0.0 to 1.0)",
+    "category": "Appearance"
+  },
+  "showProcessesList": {
+    "type": "boolean",
+    "default": true,
+    "label": "Show Processes",
+    "description": "Display the top processes section",
+    "category": "Sections"
+  },
+  "processCount": {
+    "type": "number",
+    "default": 5,
+    "label": "Process Count",
+    "description": "Number of top processes to display",
+    "category": "Sections",
+    "visibleWhen": { "key": "showProcessesList", "value": true },
+    "options": [
+      { "value": 3, "label": "3" },
+      { "value": 5, "label": "5" },
+      { "value": 10, "label": "10" }
+    ]
+  },
+  "showStorageSection": {
+    "type": "boolean",
+    "default": true,
+    "label": "Show Storage",
+    "description": "Display the storage/drives section",
+    "category": "Sections"
   }
 }
