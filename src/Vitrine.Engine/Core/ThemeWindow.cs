@@ -88,17 +88,21 @@ internal class ThemeWindow : Form
 
         var themeJs = File.ReadAllText(themeJsPath);
 
-        // Load theme.css if it exists alongside the JS entry
         var themeCssPath = Path.Combine(themePath, "theme.css");
         string? themeCss = File.Exists(themeCssPath) ? File.ReadAllText(themeCssPath) : null;
 
+        var settingsPath = Path.Combine(themePath, "settings.json");
+        string? settings = File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null;
+
         if (themeCss != null)
             Log.Info($"Theme CSS found — {themeCss.Length} chars");
+        if (settings != null)
+            Log.Info($"Theme settings found — {settings.Length} chars");
 
-        LoadThemeContent(themeJs, themeCss);
+        LoadThemeContent(themeJs, themeCss, settings);
     }
 
-    internal void LoadThemeContent(string themeJs, string? themeCss = null)
+    internal void LoadThemeContent(string themeJs, string? themeCss = null, string? settingsJson = null)
     {
         if (!_initialized)
         {
@@ -106,14 +110,16 @@ internal class ThemeWindow : Form
             return;
         }
 
-        Log.Info($"Loading theme content — JS={themeJs.Length} chars, CSS={themeCss?.Length ?? 0} chars");
+        Log.Info($"Loading theme content — JS={themeJs.Length} chars, CSS={themeCss?.Length ?? 0} chars, settings={settingsJson?.Length ?? 0} chars");
 
         var cssBlock = themeCss != null
             ? $"<style>{themeCss}</style>"
             : "";
 
+        var settingsBlock = $"<script>window.vitrine.settings = {settingsJson ?? "{}"};</script>";
+
         _webView.CoreWebView2.NavigateToString(
-            ShellHtmlPrefix + cssBlock + ShellHtmlMiddle + themeJs + ShellHtmlSuffix);
+            ShellHtmlPrefix + cssBlock + ShellHtmlMiddle + settingsBlock + ShellHtmlScript + themeJs + ShellHtmlSuffix);
         Log.Info("NavigateToString called");
     }
 
@@ -157,6 +163,10 @@ internal class ThemeWindow : Form
         </head>
         <body>
           <div id="root"></div>
+        """;
+
+    // Injected between settings block and theme JS
+    private const string ShellHtmlScript = """
           <script>
         """;
 

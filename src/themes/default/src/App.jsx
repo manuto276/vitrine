@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSystemInfo } from './useSystemInfo';
+import { useSettings } from './useSettings';
 
 /* ── helpers ─────────────────────────────────────────────────────── */
 
@@ -61,11 +62,23 @@ function Row({ label, value }) {
 
 export default function App() {
   const info = useSystemInfo();
+  const settings = useSettings();
+
+  const positionStyle = {
+    'top-right': { top: 24, right: 24 },
+    'top-left': { top: 24, left: 24 },
+    'bottom-right': { bottom: 24, right: 24 },
+    'bottom-left': { bottom: 24, left: 24 },
+  }[settings.panelPosition] || { top: 24, right: 24 };
+
+  const panelStyle = {
+    background: `rgba(40, 42, 54, ${settings.panelOpacity})`,
+  };
 
   if (!info) {
     return (
-      <div className="vitrine-container">
-        <div className="vitrine-panel">
+      <div className="vitrine-container" style={positionStyle}>
+        <div className="vitrine-panel" style={panelStyle}>
           <span className="vitrine-dim">Waiting for system data…</span>
         </div>
       </div>
@@ -76,8 +89,8 @@ export default function App() {
   const memPct = pct(memory.used, memory.total);
 
   return (
-    <div className="vitrine-container">
-      <div className="vitrine-panel">
+    <div className="vitrine-container" style={positionStyle}>
+      <div className="vitrine-panel" style={panelStyle}>
         {/* SYSTEM */}
         <Section title="SYSTEM">
           <Row label="Hostname" value={system.hostname} />
@@ -102,36 +115,40 @@ export default function App() {
         </Section>
 
         {/* STORAGE */}
-        <Section title="STORAGE">
-          {drives.map((d, i) => {
-            const usedPct = pct(d.used, d.total);
-            return (
-              <div key={i} className="vitrine-mb-6">
-                <Row
-                  label={d.name}
-                  value={`${formatBytes(d.used)} / ${formatBytes(d.total)}`}
-                />
-                <Bar value={usedPct} color={usedPct > 90 ? '#ff5555' : '#f1fa8c'} />
-              </div>
-            );
-          })}
-        </Section>
+        {settings.showStorageSection && (
+          <Section title="STORAGE">
+            {drives.map((d, i) => {
+              const usedPct = pct(d.used, d.total);
+              return (
+                <div key={i} className="vitrine-mb-6">
+                  <Row
+                    label={d.name}
+                    value={`${formatBytes(d.used)} / ${formatBytes(d.total)}`}
+                  />
+                  <Bar value={usedPct} color={usedPct > 90 ? '#ff5555' : '#f1fa8c'} />
+                </div>
+              );
+            })}
+          </Section>
+        )}
 
         {/* PROCESSES */}
-        <Section title="PROCESSES">
-          <div className="vitrine-proc-header">
-            <span className="vitrine-col-name">Name</span>
-            <span className="vitrine-col-right">PID</span>
-            <span className="vitrine-col-right">Mem</span>
-          </div>
-          {processes.map((p, i) => (
-            <div key={i} className="vitrine-proc-row">
-              <span className="vitrine-col-name">{p.name}</span>
-              <span className="vitrine-col-right vitrine-dim">{p.pid}</span>
-              <span className="vitrine-col-right">{formatBytes(p.memory)}</span>
+        {settings.showProcessesList && (
+          <Section title="PROCESSES">
+            <div className="vitrine-proc-header">
+              <span className="vitrine-col-name">Name</span>
+              <span className="vitrine-col-right">PID</span>
+              <span className="vitrine-col-right">Mem</span>
             </div>
-          ))}
-        </Section>
+            {processes.slice(0, settings.processCount).map((p, i) => (
+              <div key={i} className="vitrine-proc-row">
+                <span className="vitrine-col-name">{p.name}</span>
+                <span className="vitrine-col-right vitrine-dim">{p.pid}</span>
+                <span className="vitrine-col-right">{formatBytes(p.memory)}</span>
+              </div>
+            ))}
+          </Section>
+        )}
       </div>
     </div>
   );

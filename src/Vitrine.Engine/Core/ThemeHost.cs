@@ -68,7 +68,7 @@ internal class ThemeHost : IDisposable
 
                 var theme = await themeTask;
                 if (theme.js != null)
-                    _window.LoadThemeContent(theme.js, theme.css);
+                    _window.LoadThemeContent(theme.js, theme.css, theme.settings);
                 else
                     LoadActiveTheme(); // fallback: read from disk
             }
@@ -83,19 +83,19 @@ internal class ThemeHost : IDisposable
         Log.Info("ThemeHost started successfully");
     }
 
-    private (string? js, string? css) PreReadActiveTheme()
+    private (string? js, string? css, string? settings) PreReadActiveTheme()
     {
         try
         {
             var themePath = Path.Combine(Configuration.ThemesPath, _config.ActiveTheme);
             var manifestPath = Path.Combine(themePath, "theme.json");
-            if (!File.Exists(manifestPath)) return (null, null);
+            if (!File.Exists(manifestPath)) return (null, null, null);
 
             var manifest = JsonSerializer.Deserialize<ThemeManifest>(File.ReadAllText(manifestPath));
-            if (manifest == null) return (null, null);
+            if (manifest == null) return (null, null, null);
 
             var entryPath = Path.Combine(themePath, manifest.Entry);
-            if (!File.Exists(entryPath)) return (null, null);
+            if (!File.Exists(entryPath)) return (null, null, null);
 
             var js = File.ReadAllText(entryPath);
             Log.Info($"Theme JS pre-read — {js.Length} chars");
@@ -105,12 +105,17 @@ internal class ThemeHost : IDisposable
             if (css != null)
                 Log.Info($"Theme CSS pre-read — {css.Length} chars");
 
-            return (js, css);
+            var settingsPath = Path.Combine(themePath, "settings.json");
+            string? settings = File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null;
+            if (settings != null)
+                Log.Info($"Theme settings pre-read — {settings.Length} chars");
+
+            return (js, css, settings);
         }
         catch (Exception ex)
         {
             Log.Warn($"Pre-read failed, will load on main thread: {ex.Message}");
-            return (null, null);
+            return (null, null, null);
         }
     }
 

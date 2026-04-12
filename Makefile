@@ -31,6 +31,8 @@ build-themes:
 		cp "$$dir/dist/theme.js" "$(THEMES_DEST)/$$name/theme.js"; \
 		cp "$$dir/dist/theme.css" "$(THEMES_DEST)/$$name/theme.css" 2>/dev/null || true; \
 		cp "$$dir/theme.json" "$(THEMES_DEST)/$$name/theme.json" 2>/dev/null || true; \
+		cp "$$dir/src/settings.json" "$(THEMES_DEST)/$$name/settings.json" 2>/dev/null || true; \
+		cp "$$dir/src/settings.definitions.json" "$(THEMES_DEST)/$$name/settings.definitions.json" 2>/dev/null || true; \
 	done
 
 clean:
